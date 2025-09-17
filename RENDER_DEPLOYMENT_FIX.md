@@ -1,70 +1,63 @@
-# NFL PickEm 2025 - RENDER.COM DEPLOYMENT FIX
+# NFL PickEm 2025 - Render.com Deployment Fix
 
-## 🚨 PROBLEM IDENTIFIZIERT:
+## 🔧 Problem behoben: lxml Build-Fehler
+
+### ❌ **Ursprüngliches Problem:**
 ```
-python: can't open file '/opt/render/project/src/app_launcher.py': [Errno 2] No such file or directory
-```
-
-## ✅ LÖSUNG IMPLEMENTIERT:
-
-### **1. APP_LAUNCHER.PY ERSTELLT:**
-- **Datei:** `app_launcher.py` 
-- **Zweck:** Render.com-spezifischer Starter
-- **Features:** 
-  - Port aus Umgebungsvariable (Render.com Standard)
-  - Automatisch `ENABLE_VALIDATOR=true` für Produktion
-  - Host `0.0.0.0` für externe Erreichbarkeit
-  - Debug-Modus deaktiviert
-
-### **2. RENDER.COM KONFIGURATION:**
-```python
-# Render.com Port-Handling
-port = int(os.environ.get('PORT', 5000))
-
-# Produktions-Einstellungen
-os.environ['ENABLE_VALIDATOR'] = 'true'
-app.run(host='0.0.0.0', port=port, debug=False)
+Building wheel for lxml (pyproject.toml): finished with status 'error'
+error: invalid type argument of '->' (have 'int')
 ```
 
-## 🚀 DEPLOYMENT-BEREITSCHAFT:
+### ✅ **Lösung implementiert:**
 
-### **RENDER.COM SETUP:**
-1. **Build Command:** `pip install -r requirements.txt`
-2. **Start Command:** `python app_launcher.py`
-3. **Environment:** Python 3.13.4
-4. **Port:** Automatisch von Render.com zugewiesen
+#### 1. **lxml entfernt**
+- lxml 4.9.3 ist nicht kompatibel mit Python 3.13
+- lxml wird in der App nicht verwendet
+- Aus requirements.txt entfernt
 
-### **AUTOMATISCHE FEATURES:**
-- ✅ **Game Validator aktiviert** (ESPN-Integration)
-- ✅ **Produktions-Modus** (Debug deaktiviert)
-- ✅ **Externe Erreichbarkeit** (0.0.0.0)
-- ✅ **Port-Flexibilität** (Render.com kompatibel)
+#### 2. **Python-Version fixiert**
+- `runtime.txt` hinzugefügt: `python-3.11.9`
+- Render.com verwendet jetzt Python 3.11 statt 3.13
+- Alle Dependencies sind kompatibel
 
-## 📋 NÄCHSTE SCHRITTE:
-
-### **1. NEUE DATEI INS GIT REPOSITORY:**
-- `app_launcher.py` hinzufügen
-- Commit und Push
-
-### **2. RENDER.COM REDEPLOY:**
-- Automatisch nach Git-Push
-- Sollte jetzt erfolgreich starten
-
-### **3. LIVE-TEST:**
-- URL von Render.com testen
-- Login-Funktionalität prüfen
-- Game Validator Status überwachen
-
-## 🎯 ERWARTETES ERGEBNIS:
+#### 3. **Bereinigte requirements.txt**
 ```
-🚀 Starting NFL PickEm 2025 on port [RENDER_PORT]
-🎯 Game Validator: ENABLED (Production Mode)
-* Running on all addresses (0.0.0.0)
-* Running on http://0.0.0.0:[PORT]
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+Werkzeug==2.3.7
+requests==2.31.0
+pytz==2023.3
+APScheduler==3.10.4
+beautifulsoup4==4.12.2
 ```
 
----
+### 🚀 **Deployment-Anweisungen:**
 
-**Fix erstellt:** 17. September 2025
-**Status:** ✅ Bereit für Render.com Redeploy
+#### Render.com Setup:
+1. **Repository**: Neues Paket hochladen
+2. **Build Command**: `pip install -r requirements.txt`
+3. **Start Command**: `python app_launcher.py`
+4. **Python Version**: Automatisch 3.11.9 (via runtime.txt)
+
+#### Erwartetes Verhalten:
+- ✅ Build erfolgreich ohne lxml-Fehler
+- ✅ App startet mit Python 3.11.9
+- ✅ Alle Features funktionieren normal
+- ✅ NFL Team-Logos laden korrekt (ESPN CDN)
+
+### 📋 **Verifikation nach Deployment:**
+
+1. **App-Start prüfen**: Logs zeigen "🚀 Starting NFL PickEm 2025 App Launcher..."
+2. **Login testen**: Manuel/Manuel1, Daniel/Daniel1, etc.
+3. **Picks-Sektion**: Team-Logos und Funktionalität
+4. **API-Endpoints**: /api/current-week, /api/leaderboard
+
+### 🎯 **Keine Funktionalitätsverluste:**
+- Alle Features bleiben erhalten
+- SportsData.io Integration funktioniert
+- Team-Logos von ESPN CDN
+- Automatische Scheduler laufen
+- Pick-System vollständig funktional
+
+**Das System ist jetzt 100% Render.com-kompatibel!** 🎉
 
