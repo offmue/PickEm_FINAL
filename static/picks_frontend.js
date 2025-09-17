@@ -158,14 +158,8 @@ class PicksFrontend {
         } else if (isStarted) {
             matchStatus = '<div class=\"match-started\">Spiel läuft</div>';
         } else {
-            const gameTime = new Date(match.start_time).toLocaleString('de-AT', {
-                weekday: 'short',
-                day: '2-digit',
-                month: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                timeZone: 'Europe/Vienna'
-            });
+            // Use the pre-formatted time from backend (already in Vienna time)
+            const gameTime = match.start_time_display || 'Zeit TBD';
             matchStatus = `<div class=\"match-time\">${gameTime}</div>`;
         }
         
@@ -213,8 +207,13 @@ class PicksFrontend {
     }
     
     isTeamAvailable(teamId) {
+        // If no team availability data is loaded or is null/undefined, show all teams as available
+        if (!this.teamAvailability || Object.keys(this.teamAvailability).length === 0) {
+            return true;
+        }
+        
         const teamInfo = this.teamAvailability[teamId];
-        return teamInfo ? teamInfo.available : false;
+        return teamInfo ? teamInfo.available : true;
     }
     
     setupMatchEventListeners() {
