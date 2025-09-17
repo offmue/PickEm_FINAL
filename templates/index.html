@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFL PickEm 2025</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Main Header -->
+    <header class="main-header" id="main-header">
+        <div class="header-content">
+            <div class="logo-section">
+                <h1 class="app-title">🏈 NFL PickEm 2025</h1>
+            </div>
+            
+            <!-- Navigation -->
+            <nav class="main-nav">
+                <a href="#" class="nav-tab active" data-section="dashboard">Dashboard</a>
+                <a href="#" class="nav-tab" data-section="picks">Picks</a>
+                <a href="#" class="nav-tab" data-section="leaderboard">Leaderboard</a>
+                <a href="#" class="nav-tab" data-section="all-picks">Alle Picks</a>
+            </nav>
+            
+            <!-- User Section -->
+            <div class="user-section" id="user-section">
+                <button id="login-btn" class="login-btn">Login</button>
+                <button id="logout-btn" class="logout-btn" style="display: none;">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Countdown Timer -->
+    <div class="countdown-container">
+        <div class="countdown-timer">
+            <span class="countdown-label">Football-Sunday:</span>
+            <div class="countdown-display">
+                <span class="time-unit">
+                    <span id="days" class="time-value">00</span>
+                    <span class="time-label">Tage</span>
+                </span>
+                <span class="time-separator">:</span>
+                <span class="time-unit">
+                    <span id="hours" class="time-value">00</span>
+                    <span class="time-label">Std</span>
+                </span>
+                <span class="time-separator">:</span>
+                <span class="time-unit">
+                    <span id="minutes" class="time-value">00</span>
+                    <span class="time-label">Min</span>
+                </span>
+                <span class="time-separator">:</span>
+                <span class="time-unit">
+                    <span id="seconds" class="time-value">00</span>
+                    <span class="time-label">Sek</span>
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Dashboard Section -->
+        <section id="dashboard-section" class="content-section active">
+            <div class="dashboard-container">
+                <div class="dashboard-grid">
+                    <!-- User Stats -->
+                    <div class="dashboard-card">
+                        <h3>Deine Punkte</h3>
+                        <div class="stat-display">
+                            <span class="points-value">0</span>
+                            <span class="stat-label">Punkte</span>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-card">
+                        <h3>Dein Rang</h3>
+                        <div class="stat-display">
+                            <span class="rank-value">-</span>
+                            <span class="stat-label">Platz</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Eliminated Teams -->
+                    <div class="dashboard-card eliminated-teams-card">
+                        <h3>Eliminierte Teams</h3>
+                        <div class="eliminated-teams-list">
+                            <p>Bitte einloggen um eliminierte Teams zu sehen</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Recent Picks -->
+                    <div class="dashboard-card recent-picks-card">
+                        <h3>Letzte Picks</h3>
+                        <div class="recent-picks-list">
+                            <p>Bitte einloggen um Picks zu sehen</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Picks Section -->
+        <section id="picks-section" class="content-section">
+            <div class="picks-container">
+                <div class="picks-header">
+                    <h2>Picks</h2>
+                    <div class="week-selector-container">
+                        <label for="week-select">Woche:</label>
+                        <select id="week-select" class="week-select">
+                            <option value="1">Woche 1</option>
+                            <option value="2">Woche 2</option>
+                            <option value="3">Woche 3</option>
+                            <option value="4">Woche 4</option>
+                            <option value="5">Woche 5</option>
+                            <option value="6">Woche 6</option>
+                            <option value="7">Woche 7</option>
+                            <option value="8">Woche 8</option>
+                            <option value="9">Woche 9</option>
+                            <option value="10">Woche 10</option>
+                            <option value="11">Woche 11</option>
+                            <option value="12">Woche 12</option>
+                            <option value="13">Woche 13</option>
+                            <option value="14">Woche 14</option>
+                            <option value="15">Woche 15</option>
+                            <option value="16">Woche 16</option>
+                            <option value="17">Woche 17</option>
+                            <option value="18">Woche 18</option>
+                        </select>
+                        <span id="current-week-indicator" class="current-week-indicator"></span>
+                    </div>
+                </div>
+                
+                <div class="picks-content">
+                    <div class="matches-container">
+                        <p>Lade Spiele...</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Leaderboard Section -->
+        <section id="leaderboard-section" class="content-section">
+            <div class="leaderboard-container">
+                <h2>Rangliste</h2>
+                <p>Lade Rangliste...</p>
+            </div>
+        </section>
+
+        <!-- All Picks Section -->
+        <section id="all-picks-section" class="content-section">
+            <div class="all-picks-container">
+                <h2>Alle Picks</h2>
+                <p>Lade alle Picks...</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Login</h3>
+                <button id="modal-close" class="modal-close">&times;</button>
+            </div>
+            
+            <form id="login-form" class="login-form">
+                <div class="form-group">
+                    <label for="username">Benutzername:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Passwort:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="submit" class="login-submit-btn">Login</button>
+                </div>
+            </form>
+            
+            <div class="login-help">
+                <p><strong>Benutzer-Accounts:</strong></p>
+                <ul>
+                    <li>Manuel / Manuel1</li>
+                    <li>Daniel / Daniel1</li>
+                    <li>Raff / Raff1</li>
+                    <li>Haunschi / Haunschi1</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner"></div>
+        <p>Lade...</p>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
+
