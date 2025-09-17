@@ -270,16 +270,20 @@ function showSection(sectionName) {
     
     currentSection = sectionName;
     
-    // Hide all sections
-    const sections = document.querySelectorAll('.section');
+    // Hide all content sections and remove active class
+    const sections = document.querySelectorAll('.content-section');
     sections.forEach(section => {
         section.style.display = 'none';
+        section.classList.remove('active');
     });
     
-    // Show target section
+    // Show target section and add active class
     const targetSection = document.getElementById(sectionName + '-section');
     if (targetSection) {
         targetSection.style.display = 'block';
+        targetSection.classList.add('active');
+    } else {
+        console.error('Section not found:', sectionName + '-section');
     }
     
     // Update navigation
@@ -362,71 +366,52 @@ function loadUserStats() {
 
 // Lade Mitspieler-Punkte
 function loadMitspielerPunkte() {
-    // Erstelle die 4 Spieler mit echten Daten
-    const spieler = [
-        { username: 'Manuel', points: 0, rank: 1 },
-        { username: 'Daniel', points: 0, rank: 2 },
-        { username: 'Raff', points: 0, rank: 3 },
-        { username: 'Haunschi', points: 0, rank: 4 }
-    ];
+    console.log('Loading Mitspieler points...');
     
-    // Lade echte Leaderboard-Daten und merge sie
     fetch('/api/leaderboard', {
         method: 'GET',
         credentials: 'include'
     })
     .then(response => response.json())
     .then(data => {
+        console.log('Leaderboard data:', data);
         const mitspielerList = document.getElementById('mitspieler-list');
         
-        // Merge echte Daten mit Spieler-Namen
-        if (data.leaderboard && data.leaderboard.length > 0) {
-            data.leaderboard.forEach(player => {
-                const spielerIndex = spieler.findIndex(s => s.username.toLowerCase() === player.username.toLowerCase());
-                if (spielerIndex !== -1) {
-                    spieler[spielerIndex].points = player.points;
-                    spieler[spielerIndex].rank = player.rank || spielerIndex + 1;
-                }
-            });
+        if (!mitspielerList) {
+            console.error('Mitspieler list element not found');
+            return;
         }
         
-        // Sortiere nach Punkten (höchste zuerst)
-        spieler.sort((a, b) => b.points - a.points);
-        
-        let html = '<div class="mitspieler-items">';
-        
-        spieler.forEach((player, index) => {
-            const isCurrentUser = currentUser && player.username.toLowerCase() === currentUser.username.toLowerCase();
-            const className = isCurrentUser ? 'mitspieler-item current-user' : 'mitspieler-item';
+        if (data.leaderboard && data.leaderboard.length > 0) {
+            // Sortiere nach Punkten (höchste zuerst)
+            const sortedPlayers = data.leaderboard.sort((a, b) => b.points - a.points);
             
-            html += `
-                <div class="${className}">
-                    <span class="player-name">${player.username}</span>
-                    <span class="player-points">${player.points}</span>
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-        mitspielerList.innerHTML = html;
+            let html = '<div class="mitspieler-items">';
+            
+            sortedPlayers.forEach((player, index) => {
+                const isCurrentUser = currentUser && player.username === currentUser.username;
+                const className = isCurrentUser ? 'mitspieler-item current-user' : 'mitspieler-item';
+                
+                html += `
+                    <div class="${className}">
+                        <span class="player-name">${player.username}</span>
+                        <span class="player-points">${player.points}</span>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            mitspielerList.innerHTML = html;
+        } else {
+            mitspielerList.innerHTML = '<p>Keine Mitspieler-Daten verfügbar</p>';
+        }
     })
     .catch(error => {
-        console.error('Error loading mitspieler:', error);
-        // Fallback: Zeige die 4 Spieler mit 0 Punkten
+        console.error('Error loading Mitspieler:', error);
         const mitspielerList = document.getElementById('mitspieler-list');
-        let html = '<div class="mitspieler-items">';
-        
-        spieler.forEach((player) => {
-            html += `
-                <div class="mitspieler-item">
-                    <span class="player-name">${player.username}</span>
-                    <span class="player-points">0</span>
-                </div>
-            `;
-        });
-        
-        html += '</div>';
-        mitspielerList.innerHTML = html;
+        if (mitspielerList) {
+            mitspielerList.innerHTML = '<p>Fehler beim Laden der Mitspieler</p>';
+        }
     });
 }
 
