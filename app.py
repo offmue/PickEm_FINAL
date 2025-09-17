@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, flash, send_from_directory
+from flask import Flask, request, jsonify, session, send_from_directory, render_template
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
@@ -1033,14 +1033,29 @@ def get_match_results():
         return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
 
 # Serve static files
-@app.route('/', defaults={'path': ''})
-@app.route('/picks', defaults={'path': ''})
-@app.route('/leaderboard', defaults={'path': ''})
-@app.route('/alle-picks', defaults={'path': ''})
+@app.route('/')
+def index():
+    """Serve the main application page"""
+    return render_template('index.html')
+
+@app.route('/picks')
+def picks():
+    """Serve the picks page"""
+    return render_template('index.html')
+
+@app.route('/leaderboard')
+def leaderboard():
+    """Serve the leaderboard page"""
+    return render_template('index.html')
+
+@app.route('/alle-picks')
+def alle_picks():
+    """Serve the alle-picks page"""
+    return render_template('index.html')
+
 @app.route('/<path:path>')
 def serve_static(path):
-    if path == '' or path == 'index.html':
-        return send_from_directory('static', 'index.html')
+    """Serve static files"""
     return send_from_directory('static', path)
 
 # Initialize database
