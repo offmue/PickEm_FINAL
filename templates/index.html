@@ -69,7 +69,7 @@
                     <div class="dashboard-card">
                         <h3>Deine Punkte</h3>
                         <div class="stat-display">
-                            <span class="points-value">0</span>
+                            <span id="user-points" class="points-value">0</span>
                             <span class="stat-label">Punkte</span>
                         </div>
                     </div>
@@ -77,24 +77,24 @@
                     <div class="dashboard-card">
                         <h3>Dein Rang</h3>
                         <div class="stat-display">
-                            <span class="rank-value">-</span>
+                            <span id="user-rank" class="rank-value">-</span>
                             <span class="stat-label">Platz</span>
                         </div>
                     </div>
                     
-                    <!-- Eliminated Teams -->
-                    <div class="dashboard-card eliminated-teams-card">
-                        <h3>Eliminierte Teams</h3>
-                        <div class="eliminated-teams-list">
-                            <p>Bitte einloggen um eliminierte Teams zu sehen</p>
+                    <!-- Mitspieler Punkte -->
+                    <div class="dashboard-card mitspieler-card">
+                        <h3>Mitspieler</h3>
+                        <div id="mitspieler-list" class="mitspieler-list">
+                            <p>Lade Mitspieler...</p>
                         </div>
                     </div>
                     
-                    <!-- Recent Picks -->
-                    <div class="dashboard-card recent-picks-card">
-                        <h3>Letzte Picks</h3>
-                        <div class="recent-picks-list">
-                            <p>Bitte einloggen um Picks zu sehen</p>
+                    <!-- Team Usage -->
+                    <div class="dashboard-card team-usage-card">
+                        <h3>Team Usage</h3>
+                        <div id="team-usage-list" class="team-usage-list">
+                            <p>Lade Team Usage...</p>
                         </div>
                     </div>
                 </div>
@@ -106,6 +106,20 @@
             <div class="picks-container">
                 <div class="picks-header">
                     <h2>Picks</h2>
+                    
+                    <!-- Regelbox -->
+                    <div class="rules-box">
+                        <div class="rule-item">
+                            <strong>Punkteregel:</strong> Richtig getippt = +1 Punkt, falsch getippt = 0 Punkte
+                        </div>
+                        <div class="rule-item">
+                            <strong>Verliererauswahl-Regel:</strong> Jedes Team kann nur 1x pro Saison als Verlierer getippt werden
+                        </div>
+                        <div class="rule-item">
+                            <strong>Gewinner-Auswahl-Regel:</strong> Jedes Team kann nur 2x pro Saison als Gewinner getippt werden
+                        </div>
+                    </div>
+                    
                     <div class="week-selector-container">
                         <label for="week-select">Woche:</label>
                         <select id="week-select" class="week-select">
@@ -152,7 +166,9 @@
         <section id="all-picks-section" class="content-section">
             <div class="all-picks-container">
                 <h2>Alle Picks</h2>
-                <p>Lade alle Picks...</p>
+                <div id="alle-picks-content">
+                    <p>Lade alle Picks...</p>
+                </div>
             </div>
         </section>
     </main>

@@ -1094,13 +1094,43 @@ if __name__ == '__main__':
 
 
 
-@app.route('/api/users', methods=['GET'])
-def get_users():
-    try:
-        users = User.query.all()
-        return jsonify([user.to_dict() for user in users]), 200
-    except Exception as e:
-        print(f"Error in get_users: {e}")
-        return jsonify({'error': 'Internal server error', 'details': str(e)}), 500
+# Removed insecure /api/users endpoint for security reasons
+
+
+
+
+
+@app.route('/api/user/team-usage', methods=['GET'])
+def get_team_usage():
+    user_id = request.args.get('user_id', type=int)
+    if not user_id:
+        return jsonify({'error': 'User ID required'}), 400
+
+    # Get winner teams
+    winner_usage = db.session.query(Team.name, db.func.count(TeamWinnerUsage.id)).join(TeamWinnerUsage).filter(TeamWinnerUsage.user_id == user_id).group_by(Team.name).all()
+    winners = [{'name': name, 'count': count} for name, count in winner_usage]
+
+    # Get loser teams
+    loser_usage = db.session.query(Team.name).join(TeamLoserUsage).filter(TeamLoserUsage.user_id == user_id).group_by(Team.name).all()
+    losers = [{'name': name[0]} for name in loser_usage]
+
+    return jsonify({'winners': winners, 'losers': losers}), 200
+
+
+
+
+@app.route("/api/user/team-usage", methods=["GET"])
+def get_team_usage():
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "User ID is required"}), 400
+
+    winner_usage = db.session.query(Team.name, db.func.count(TeamWinnerUsage.id)).join(TeamWinnerUsage).filter(TeamWinnerUsage.user_id == user_id).group_by(Team.name).all()
+    loser_usage = db.session.query(Team.name).join(TeamLoserUsage).filter(TeamLoserUsage.user_id == user_id).all()
+
+    winners = [{"name": name, "count": count} for name, count in winner_usage]
+    losers = [{"name": name} for name, in loser_usage]
+
+    return jsonify({"winners": winners, "losers": losers})
 
 

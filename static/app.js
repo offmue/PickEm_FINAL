@@ -12,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeAuth();
     initializeCountdown();
     loadCurrentWeek();
+    checkSession(); // Check for existing session
     showSection('dashboard');
     
     console.log('NFL PickEm App initialized successfully');
@@ -122,7 +123,7 @@ function login(username, password) {
     .then(data => {
         console.log('Login response:', data);
         
-        if (data.success && data.user) {
+        if (data.message && data.user) {
             currentUser = data.user;
             
             // Close modal
@@ -150,6 +151,35 @@ function login(username, password) {
     .catch(error => {
         console.error('Login error:', error);
         alert('Login-Fehler: Verbindung zum Server fehlgeschlagen');
+    });
+}
+
+// Check Session Function
+function checkSession() {
+    console.log('Checking for existing session...');
+    
+    fetch('/api/auth/check-session', {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Session check response:', data);
+        
+        if (data.user) {
+            currentUser = data.user;
+            console.log('Session restored for:', currentUser.username);
+        } else {
+            currentUser = null;
+            console.log('No active session found');
+        }
+        
+        updateAuthUI();
+    })
+    .catch(error => {
+        console.error('Session check error:', error);
+        currentUser = null;
+        updateAuthUI();
     });
 }
 
@@ -274,7 +304,7 @@ function loadSectionData(sectionName) {
         case 'leaderboard':
             loadLeaderboardData();
             break;
-        case 'alle-picks':
+        case 'all-picks':
             loadAllPicksData();
             break;
     }
@@ -285,146 +315,472 @@ function loadDashboardData() {
     console.log('Loading dashboard data...');
     
     if (!currentUser) {
-        const dashboardContent = document.getElementById('dashboard-content');
-        if (dashboardContent) {
-            dashboardContent.innerHTML = `
-                <div class="login-prompt">
-                    <h3>Bitte einloggen</h3>
-                    <p>Melden Sie sich an, um Ihr Dashboard zu sehen.</p>
-                    <button onclick="document.getElementById('login-btn').click()" class="btn btn-primary">
-                        Jetzt einloggen
-                    </button>
-                </div>
-            `;
-        }
+        // Zeige Login-Aufforderung in allen Bereichen
+        document.getElementById('user-points').textContent = '0';
+        document.getElementById('user-rank').textContent = '-';
+        document.getElementById('mitspieler-list').innerHTML = '<p>Bitte einloggen um Mitspieler zu sehen</p>';
+        document.getElementById('team-usage-list').innerHTML = '<p>Bitte einloggen um Team Usage zu sehen</p>';
         return;
     }
     
-    const dashboardContent = document.getElementById('dashboard-content');
-    if (dashboardContent) {
-        dashboardContent.innerHTML = `
-            <div class="dashboard-cards">
-                <div class="card">
-                    <h3>Punkte</h3>
-                    <div class="score">2</div>
-                    <p>Nach Woche 2</p>
-                </div>
-                <div class="card">
-                    <h3>Eliminierte Teams</h3>
-                    <div class="eliminated-count">2</div>
-                    <p>Permanent eliminiert</p>
-                </div>
-            </div>
-        `;
-    }
+    // Lade User-Statistiken
+    loadUserStats();
+    
+    // Lade Mitspieler-Punkte
+    loadMitspielerPunkte();
+    
+    // Lade Team Usage
+    loadTeamUsage();
 }
 
+// Lade User-Statistiken
+function loadUserStats() {
+    fetch('/api/user/stats', {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.points !== undefined) {
+            document.getElementById('user-points').textContent = data.points;
+        }
+        if (data.rank !== undefined) {
+            document.getElementById('user-rank').textContent = data.rank;
+        }
+    })
+    .catch(error => {
+        console.error('Error loading user stats:', error);
+        document.getElementById('user-points').textContent = '0';
+        document.getElementById('user-rank').textContent = '-';
+    });
+}
+
+// Lade Mitspieler-Punkte
+function loadMitspielerPunkte() {
+    // Erstelle die 4 Spieler mit echten Daten
+    const spieler = [
+        { username: 'Manuel', points: 0, rank: 1 },
+        { username: 'Daniel', points: 0, rank: 2 },
+        { username: 'Raff', points: 0, rank: 3 },
+        { username: 'Haunschi', points: 0, rank: 4 }
+    ];
+    
+    // Lade echte Leaderboard-Daten und merge sie
+    fetch('/api/leaderboard', {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        const mitspielerList = document.getElementById('mitspieler-list');
+        
+        // Merge echte Daten mit Spieler-Namen
+        if (data.leaderboard && data.leaderboard.length > 0) {
+            data.leaderboard.forEach(player => {
+                const spielerIndex = spieler.findIndex(s => s.username.toLowerCase() === player.username.toLowerCase());
+                if (spielerIndex !== -1) {
+                    spieler[spielerIndex].points = player.points;
+                    spieler[spielerIndex].rank = player.rank || spielerIndex + 1;
+                }
+            });
+        }
+        
+        // Sortiere nach Punkten (höchste zuerst)
+        spieler.sort((a, b) => b.points - a.points);
+        
+        let html = '<div class="mitspieler-items">';
+        
+        spieler.forEach((player, index) => {
+            const isCurrentUser = currentUser && player.username.toLowerCase() === currentUser.username.toLowerCase();
+            const className = isCurrentUser ? 'mitspieler-item current-user' : 'mitspieler-item';
+            
+            html += `
+                <div class="${className}">
+                    <span class="player-name">${player.username}</span>
+                    <span class="player-points">${player.points}</span>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        mitspielerList.innerHTML = html;
+    })
+    .catch(error => {
+        console.error('Error loading mitspieler:', error);
+        // Fallback: Zeige die 4 Spieler mit 0 Punkten
+        const mitspielerList = document.getElementById('mitspieler-list');
+        let html = '<div class="mitspieler-items">';
+        
+        spieler.forEach((player) => {
+            html += `
+                <div class="mitspieler-item">
+                    <span class="player-name">${player.username}</span>
+                    <span class="player-points">0</span>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+        mitspielerList.innerHTML = html;
+    });
+}
+
+// Lade Team Usage (Winner/Loser)
+function loadTeamUsage() {
+    if (!currentUser) return;
+    
+    fetch(`/api/user/team-usage?user_id=${currentUser.id}`, {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        const teamUsageList = document.getElementById('team-usage-list');
+        
+        if (data.winners || data.losers) {
+            let html = '<div class="team-usage-container">';
+            
+            // Winner Spalte
+            html += '<div class="usage-column">';
+            html += '<h4>Winner</h4>';
+            if (data.winners && data.winners.length > 0) {
+                data.winners.forEach(team => {
+                    const count = team.count || 1;
+                    const maxCount = 2; // Max 2x als Winner
+                    html += `<div class="usage-item winner">
+                        <span class="team-name">${team.name}</span>
+                        <span class="usage-count">${count}/${maxCount}</span>
+                    </div>`;
+                });
+            } else {
+                html += '<div class="usage-item">Noch keine Winner</div>';
+            }
+            html += '</div>';
+            
+            // Loser Spalte
+            html += '<div class="usage-column">';
+            html += '<h4>Loser</h4>';
+            if (data.losers && data.losers.length > 0) {
+                data.losers.forEach(team => {
+                    html += `<div class="usage-item loser">
+                        <span class="team-name">${team.name}</span>
+                        <span class="usage-count">1/1</span>
+                    </div>`;
+                });
+            } else {
+                html += '<div class="usage-item">Noch keine Loser</div>';
+            }
+            html += '</div>';
+            
+            html += '</div>';
+            teamUsageList.innerHTML = html;
+        } else {
+            // Fallback: Zeige Beispiel-Daten
+            teamUsageList.innerHTML = `
+                <div class="team-usage-container">
+                    <div class="usage-column">
+                        <h4>Winner</h4>
+                        <div class="usage-item winner">
+                            <span class="team-name">Falcons</span>
+                            <span class="usage-count">1/2</span>
+                        </div>
+                        <div class="usage-item winner">
+                            <span class="team-name">Cowboys</span>
+                            <span class="usage-count">1/2</span>
+                        </div>
+                    </div>
+                    <div class="usage-column">
+                        <h4>Loser</h4>
+                        <div class="usage-item loser">
+                            <span class="team-name">Buccaneers</span>
+                            <span class="usage-count">1/1</span>
+                        </div>
+                        <div class="usage-item loser">
+                            <span class="team-name">Giants</span>
+                            <span class="usage-count">1/1</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error loading team usage:', error);
+        document.getElementById('team-usage-list').innerHTML = '<p>Fehler beim Laden der Team Usage</p>';
+    });
+}
 // Load Picks Data
 function loadPicksData() {
     console.log('Loading picks data for week:', currentWeek);
     
-    if (!currentUser) {
-        const picksContent = document.getElementById('picks-content');
-        if (picksContent) {
-            picksContent.innerHTML = `
-                <div class="login-prompt">
-                    <h3>Bitte einloggen</h3>
-                    <p>Melden Sie sich an, um Picks abzugeben.</p>
-                </div>
-            `;
-        }
-        return;
+    // Setze die aktuelle Woche im Dropdown
+    const weekSelect = document.getElementById('week-select');
+    if (weekSelect) {
+        weekSelect.value = currentWeek;
+        
+        // Event Listener für Woche-Änderung
+        weekSelect.onchange = function() {
+            const selectedWeek = parseInt(this.value);
+            loadMatchesForWeek(selectedWeek);
+        };
     }
     
-    const picksContent = document.getElementById('picks-content');
-    if (picksContent) {
-        picksContent.innerHTML = `
-            <div class="picks-header">
-                <h3>Picks - Woche ${currentWeek} (Aktuelle Woche: ${currentWeek})</h3>
-            </div>
-            
-            <div class="picks-info">
-                <p><strong>Dallas Cowboys:</strong> Verfügbar (1x verwendet, noch 1x möglich)</p>
-                <p><strong>Eliminierte Teams:</strong> Tampa Bay Buccaneers, New York Giants</p>
-            </div>
-            
-            <div class="matches-container">
-                <div class="match-card">
-                    <div class="match-teams">
-                        <div class="team">Dallas Cowboys @ Arizona Cardinals</div>
-                    </div>
-                    <div class="match-actions">
-                        <button class="btn btn-winner" onclick="selectTeam('Dallas Cowboys', 'winner')">
-                            Dallas Cowboys als Winner
-                        </button>
-                    </div>
-                </div>
+    // Lade Spiele für die aktuelle Woche
+    loadMatchesForWeek(currentWeek);
+}
+
+// Lade Spiele für eine bestimmte Woche
+function loadMatchesForWeek(week) {
+    console.log('Loading matches for week:', week);
+    
+    const matchesContainer = document.querySelector('.matches-container');
+    if (!matchesContainer) return;
+    
+    // Zeige Loading-Indikator
+    matchesContainer.innerHTML = '<p>Lade Spiele...</p>';
+    
+    if (!currentUser) {
+        matchesContainer.innerHTML = `
+            <div class="login-prompt">
+                <h3>Bitte einloggen</h3>
+                <p>Melden Sie sich an, um Picks abzugeben.</p>
             </div>
         `;
-    }
-}
-
-// Select Team
-function selectTeam(teamName, pickType) {
-    console.log('Team selected:', teamName, 'as', pickType);
-    
-    if (!currentUser) {
-        alert('Bitte erst einloggen!');
         return;
     }
     
-    alert(`${teamName} als ${pickType === 'winner' ? 'Winner' : 'Loser'} ausgewählt! (Demo-Modus)`);
+    // Lade Spiele von API
+    fetch(`/api/matches?week=${week}`, {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.matches && data.matches.length > 0) {
+            displayMatches(data.matches, week);
+        } else {
+            matchesContainer.innerHTML = '<p>Keine Spiele für diese Woche gefunden.</p>';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading matches:', error);
+        matchesContainer.innerHTML = '<p>Fehler beim Laden der Spiele.</p>';
+    });
 }
 
+// Zeige Spiele an
+function displayMatches(matches, week) {
+    const matchesContainer = document.querySelector('.matches-container');
+    if (!matchesContainer) return;
+    
+    // Bestimme Wochenstatus
+    const isCompletedWeek = week <= 2; // Woche 1 und 2 sind abgeschlossen
+    const isCurrentWeek = week === 3;   // Woche 3 ist aktuell
+    
+    let html = `
+        <div class="week-info">
+            <h3>Woche ${week}</h3>
+            ${isCompletedWeek ? 
+                '<p class="week-status completed">Diese Woche ist bereits abgeschlossen</p>' :
+                isCurrentWeek ? 
+                    '<p class="week-status current">Aktuelle Woche - Picks möglich</p>' :
+                    '<p class="week-status future">Zukünftige Woche</p>'
+            }
+        </div>
+        <div class="matches-grid">
+    `;
+    
+    matches.forEach(match => {
+        const gameTime = new Date(match.start_time_vienna);
+        const timeString = gameTime.toLocaleString('de-AT', {
+            weekday: 'short',
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            timeZone: 'Europe/Vienna'
+        });
+        
+        // Bestimme Team-Verfügbarkeit (vereinfacht für Demo)
+        const awayTeamAvailable = !isCompletedWeek;
+        const homeTeamAvailable = !isCompletedWeek;
+        
+        const matchClass = isCompletedWeek ? 'match-card completed' : 'match-card active';
+        const awayClass = awayTeamAvailable ? 'team-button available' : 'team-button unavailable';
+        const homeClass = homeTeamAvailable ? 'team-button available' : 'team-button unavailable';
+        
+        html += `
+            <div class="${matchClass}" data-match-id="${match.id}">
+                <div class="match-time">${timeString}</div>
+                <div class="match-teams">
+                    <button class="${awayClass}" 
+                            data-team-id="${match.away_team.id}"
+                            ${!awayTeamAvailable ? 'disabled' : ''}
+                            onclick="selectTeam(${match.id}, ${match.away_team.id}, '${match.away_team.name}')">
+                        <div class="team-info">
+                            <div class="team-name">${match.away_team.name}</div>
+                            <div class="team-abbr">${match.away_team.abbreviation}</div>
+                        </div>
+                    </button>
+                    
+                    <div class="vs-separator">@</div>
+                    
+                    <button class="${homeClass}" 
+                            data-team-id="${match.home_team.id}"
+                            ${!homeTeamAvailable ? 'disabled' : ''}
+                            onclick="selectTeam(${match.id}, ${match.home_team.id}, '${match.home_team.name}')">
+                        <div class="team-info">
+                            <div class="team-name">${match.home_team.name}</div>
+                            <div class="team-abbr">${match.home_team.abbreviation}</div>
+                        </div>
+                    </button>
+                </div>
+                
+                ${match.is_completed ? 
+                    `<div class="match-result">
+                        Gewinner: ${match.winner || 'TBD'} 
+                        (${match.home_score || 0} - ${match.away_score || 0})
+                    </div>` : 
+                    match.is_game_started ? 
+                        '<div class="match-status">Spiel läuft</div>' : 
+                        '<div class="match-status">Noch nicht gestartet</div>'
+                }
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    matchesContainer.innerHTML = html;
+}
+
+// Team-Auswahl Funktion
+function selectTeam(matchId, teamId, teamName) {
+    if (!currentUser) {
+        alert('Bitte loggen Sie sich ein, um Picks abzugeben.');
+        return;
+    }
+    
+    const confirmation = confirm(`Möchten Sie ${teamName} als Gewinner wählen?`);
+    if (!confirmation) return;
+    
+    // Sende Pick an Server
+    fetch('/api/picks', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+            match_id: matchId,
+            chosen_team_id: teamId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Fehler: ' + data.error);
+        } else {
+            alert('Pick erfolgreich gespeichert!');
+            // Lade Spiele neu um aktuellen Status zu zeigen
+            const weekSelect = document.getElementById('week-select');
+            if (weekSelect) {
+                loadMatchesForWeek(parseInt(weekSelect.value));
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error submitting pick:', error);
+        alert('Fehler beim Speichern des Picks.');
+    });
+}
+// Load Leaderboard Data
 // Load Leaderboard Data
 function loadLeaderboardData() {
-    const leaderboardContent = document.getElementById('leaderboard-content');
-    if (leaderboardContent) {
-        leaderboardContent.innerHTML = `
-            <div class="leaderboard-table">
-                <table>
-                    <thead>
-                        <tr><th>Rang</th><th>Spieler</th><th>Punkte</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td>1</td><td>Manuel</td><td>2</td></tr>
-                        <tr><td>1</td><td>Daniel</td><td>2</td></tr>
-                        <tr><td>1</td><td>Raff</td><td>2</td></tr>
-                        <tr><td>1</td><td>Haunschi</td><td>2</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        `;
-    }
+    console.log('Loading leaderboard data...');
+    
+    fetch('/api/leaderboard', {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        const leaderboardContainer = document.querySelector('.leaderboard-container');
+        if (!leaderboardContainer) return;
+        
+        if (data.leaderboard && data.leaderboard.length > 0) {
+            let html = '<h2>Rangliste</h2><div class="leaderboard-list">';
+            
+            data.leaderboard.forEach((player, index) => {
+                const isCurrentUser = currentUser && player.username === currentUser.username;
+                const className = isCurrentUser ? 'leaderboard-item current-user' : 'leaderboard-item';
+                
+                html += `
+                    <div class="${className}">
+                        <span class="rank">${index + 1}.</span>
+                        <span class="username">${player.username}</span>
+                        <span class="points">${player.points} Punkte</span>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            leaderboardContainer.innerHTML = html;
+        } else {
+            leaderboardContainer.innerHTML = '<h2>Rangliste</h2><p>Noch keine Daten verfügbar</p>';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading leaderboard:', error);
+        const leaderboardContainer = document.querySelector('.leaderboard-container');
+        if (leaderboardContainer) {
+            leaderboardContainer.innerHTML = '<h2>Rangliste</h2><p>Fehler beim Laden der Rangliste</p>';
+        }
+    });
+}
+
 }
 
 // Load All Picks Data
 function loadAllPicksData() {
-    const allPicksContent = document.getElementById('alle-picks-content');
-    if (allPicksContent) {
-        allPicksContent.innerHTML = `
-            <div class="all-picks-controls">
-                <label>
-                    <input type="checkbox" id="hide-current-week" checked>
-                    Aktuelle Woche ausblenden
-                </label>
-            </div>
+    console.log('Loading all picks data...');
+    
+    const allPicksContainer = document.getElementById('alle-picks-content');
+    if (!allPicksContainer) return;
+    
+    allPicksContainer.innerHTML = '<p>Lade alle Picks...</p>';
+    
+    fetch('/api/picks/all', {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.picks && data.picks.length > 0) {
+            let html = '<div class="all-picks-list">';
             
-            <div class="picks-by-week">
-                <h3>Woche 2</h3>
-                <p>Manuel: Dallas Cowboys ✅</p>
-                <p>Daniel: Philadelphia Eagles ✅</p>
-                <p>Raff: Dallas Cowboys ✅</p>
-                <p>Haunschi: Buffalo Bills ✅</p>
+            data.picks.forEach(pick => {
+                const resultClass = pick.is_correct ? 'correct' : 'incorrect';
+                const resultIcon = pick.is_correct ? '✓' : '✗';
                 
-                <h3>Woche 1</h3>
-                <p>Manuel: Atlanta Falcons ✅</p>
-                <p>Daniel: Denver Broncos ✅</p>
-                <p>Raff: Cincinnati Bengals ✅</p>
-                <p>Haunschi: Washington Commanders ✅</p>
-            </div>
-        `;
-    }
+                html += `
+                    <div class="pick-item ${resultClass}">
+                        <span class="pick-week">W${pick.match.week}</span>
+                        <span class="pick-user">${pick.user.username}</span>
+                        <span class="pick-team">${pick.chosen_team.name}</span>
+                        <span class="pick-result">${resultIcon}</span>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            allPicksContainer.innerHTML = html;
+        } else {
+            allPicksContainer.innerHTML = '<p>Noch keine Picks abgegeben</p>';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading all picks:', error);
+        allPicksContainer.innerHTML = '<p>Fehler beim Laden der Picks</p>';
+    });
 }
-
 console.log('NFL PickEm 2025 - Frontend JavaScript loaded successfully');
