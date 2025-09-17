@@ -393,10 +393,10 @@ def run_weekly_schedule_sync():
 
 # ===== MAIN =====
 
+# Registriere Pick API Endpoints (außerhalb von __main__)
+register_pick_endpoints(app)
+
 if __name__ == '__main__':
-    # Registriere Pick API Endpoints
-    register_pick_endpoints(app)
-    
     # Initialisiere Datenbank
     initialize_database()
     

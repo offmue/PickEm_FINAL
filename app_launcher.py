@@ -7,7 +7,6 @@ Initialisiert Datenbank und startet die App
 import os
 import sys
 import logging
-from app import app, initialize_database
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +17,9 @@ def main():
     logger.info("🚀 Starting NFL PickEm 2025 App Launcher...")
     
     try:
+        # Import der App (API-Endpoints werden automatisch registriert)
+        from app import app, initialize_database
+        
         # Datenbank initialisieren
         logger.info("🔧 Initializing database...")
         initialize_database()
