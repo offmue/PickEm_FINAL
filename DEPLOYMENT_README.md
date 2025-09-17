@@ -13,12 +13,16 @@
 - Teams und Spiele werden von ESPN geladen
 - Game Validator startet automatisch
 
-### 3. Test-Accounts (automatisch erstellt)
-- admin / admin123
-- manuel / manuel123
-- daniel / daniel123
-- raff / raff123
-- haunschi / haunschi123
+### 3. User-Accounts (automatisch erstellt)
+- Manuel / Manuel1
+- Daniel / Daniel1
+- Raff / Raff1
+- Haunschi / Haunschi1
+
+### 4. Historische Daten
+- Woche 1 & 2 Picks werden automatisch erstellt
+- Eliminierungslogik wird korrekt angewendet
+- Punkte werden basierend auf echten Ergebnissen berechnet
 
 ## ✅ FEATURES ENTHALTEN
 - Dashboard mit 4 Karten

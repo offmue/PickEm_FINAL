@@ -238,9 +238,9 @@ function updateCountdown(targetDate) {
     const diff = targetDate - now;
     
     if (diff <= 0) {
-        const countdownElement = document.getElementById('countdown-timer');
-        if (countdownElement) {
-            countdownElement.innerHTML = '<span>Football-Sunday (REDZONE) ist da! 🔥🏈</span>';
+        const countdownLabel = document.querySelector('.countdown-label');
+        if (countdownLabel) {
+            countdownLabel.innerHTML = 'Football-Sunday (REDZONE) ist da! 🔥🏈';
         }
         return;
     }
@@ -250,13 +250,18 @@ function updateCountdown(targetDate) {
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
     
-    const countdownElement = document.getElementById('countdown-timer');
-    if (countdownElement) {
-        countdownElement.innerHTML = `
-            <span>Football-Sunday (REDZONE) 🔥:</span>
-            <span>${days}d ${hours}h ${minutes}m ${seconds}s</span>
-        `;
-    }
+    // Update individual elements
+    const daysElement = document.getElementById('days');
+    const hoursElement = document.getElementById('hours');
+    const minutesElement = document.getElementById('minutes');
+    const secondsElement = document.getElementById('seconds');
+    const labelElement = document.querySelector('.countdown-label');
+    
+    if (daysElement) daysElement.textContent = String(days).padStart(2, '0');
+    if (hoursElement) hoursElement.textContent = String(hours).padStart(2, '0');
+    if (minutesElement) minutesElement.textContent = String(minutes).padStart(2, '0');
+    if (secondsElement) secondsElement.textContent = String(seconds).padStart(2, '0');
+    if (labelElement) labelElement.textContent = 'Football-Sunday (REDZONE) 🔥:';
 }
 
 // Show Section

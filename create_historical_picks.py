@@ -1,44 +1,16 @@
 #!/usr/bin/env python3
 """
-NFL PickEm 2025 - Render.com Launcher
-Startet die Flask-Anwendung für Render.com Deployment
+Create historical picks for Woche 1 & 2
 """
 
-import os
-import sys
 from app import app, db, User, Team, Match, Pick, TeamWinnerUsage, TeamLoserUsage
-
-def create_test_users():
-    """Create test users if they don't exist"""
-    with app.app_context():
-        # Check if users already exist
-        if User.query.first():
-            print("✅ Users already exist")
-            return
-            
-        # Create test users
-        users_data = [
-            {'username': 'Manuel', 'password': 'Manuel1'},
-            {'username': 'Daniel', 'password': 'Daniel1'},
-            {'username': 'Raff', 'password': 'Raff1'},
-            {'username': 'Haunschi', 'password': 'Haunschi1'}
-        ]
-        
-        for user_data in users_data:
-            user = User(username=user_data['username'])
-            user.set_password(user_data['password'])
-            db.session.add(user)
-            print(f"✅ Created user: {user_data['username']}")
-        
-        db.session.commit()
-        print("✅ All 4 users created successfully!")
+from datetime import datetime
 
 def create_historical_picks():
-    """Create historical picks for Woche 1 & 2"""
     with app.app_context():
         # Check if picks already exist
         if Pick.query.first():
-            print("✅ Historical picks already exist")
+            print("✅ Picks already exist")
             return
             
         # Get users
@@ -48,13 +20,12 @@ def create_historical_picks():
         haunschi = User.query.filter_by(username='Haunschi').first()
         
         if not all([manuel, daniel, raff, haunschi]):
-            print("❌ Users not found, skipping historical picks")
+            print("❌ Users not found, create users first")
             return
             
-        # Get teams by searching for partial names
-        def find_team(name_part):
-            return Team.query.filter(Team.name.contains(name_part)).first()
-            
+        # Get teams
+        teams = {team.name: team for team in Team.query.all()}
+        
         # Historical picks data
         historical_picks = [
             # Woche 1
@@ -77,8 +48,14 @@ def create_historical_picks():
             loser_name = pick_data['loser']
             
             # Find teams
-            winner_team = find_team(winner_name)
-            loser_team = find_team(loser_name)
+            winner_team = None
+            loser_team = None
+            
+            for team_name, team in teams.items():
+                if winner_name in team_name:
+                    winner_team = team
+                if loser_name in team_name:
+                    loser_team = team
                     
             if not winner_team or not loser_team:
                 print(f"❌ Teams not found: {winner_name} vs {loser_name}")
@@ -117,23 +94,5 @@ def create_historical_picks():
         print("✅ All historical picks created!")
 
 if __name__ == '__main__':
-    # Render.com Port aus Umgebungsvariable
-    port = int(os.environ.get('PORT', 5000))
-    
-    # Produktions-Modus für Render.com
-    os.environ['ENABLE_VALIDATOR'] = 'true'
-    
-    print(f"🚀 Starting NFL PickEm 2025 on port {port}")
-    print("🎯 Game Validator: ENABLED (Production Mode)")
-    
-    # Create test users and historical picks
-    create_test_users()
     create_historical_picks()
-    
-    # Flask-App starten
-    app.run(
-        host='0.0.0.0',
-        port=port,
-        debug=False  # Produktions-Modus
-    )
 
