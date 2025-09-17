@@ -1,53 +1,34 @@
-#!/usr/bin/env python3
 """
-Vollständige NFL PickEm 2025 App
-Integration aller Komponenten: SportsData.io, Pick-Logik, Frontend
+NFL PickEm 2025 - Main Application with ESPN Integration
+Complete NFL Pick'em game with real ESPN data
 """
 
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 import pytz
-import os
 import logging
-from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.cron import CronTrigger
+import os
 
-# Import unserer Module
-from sportsdata_integration import SportsDataAPI
-from pick_logic_backend import PickLogicBackend
-from nfl_results_validator import NFLResultsValidator
-from nfl_team_logos import update_team_logos_in_database, get_team_logo_url
-
-# Logging setup
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Flask App Setup
+# Initialize Flask app
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'nfl-pickem-2025-secret-key')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///nfl_pickem.db'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'nfl-pickem-2025-secret-key')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///nfl_pickem.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Database Setup
+# Initialize database
 db = SQLAlchemy(app)
 
-# Timezone
-vienna_tz = pytz.timezone('Europe/Vienna')
-
-# ===== DATABASE MODELS =====
-
+# Database Models
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(120), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    picks = db.relationship('Pick', backref='user', lazy=True)
-    winner_usage = db.relationship('TeamWinnerUsage', backref='user', lazy=True)
-    loser_usage = db.relationship('TeamLoserUsage', backref='user', lazy=True)
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -56,57 +37,37 @@ class User(db.Model):
         return check_password_hash(self.password_hash, password)
     
     def get_score(self):
-        """Berechnet die Gesamtpunkte des Users"""
-        return Pick.query.filter_by(user_id=self.id, is_correct=True).count()
-    
-    def get_rank(self):
-        """Berechnet den Rang des Users"""
-        user_score = self.get_score()
-        better_users = db.session.query(User).filter(
-            User.id != self.id
-        ).all()
+        """Calculate user's total score"""
+        total_points = 0
+        picks = Pick.query.filter_by(user_id=self.id).all()
         
-        better_count = 0
-        for user in better_users:
-            if user.get_score() > user_score:
-                better_count += 1
+        for pick in picks:
+            match = pick.match
+            if match.is_completed and match.winner_team_id:
+                if pick.chosen_team_id == match.winner_team_id:
+                    total_points += 1
         
-        return better_count + 1
+        return total_points
 
 class Team(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
-    abbreviation = db.Column(db.String(5), unique=True, nullable=False)
-    logo_url = db.Column(db.String(255))
-    conference = db.Column(db.String(3))  # AFC/NFC
-    division = db.Column(db.String(20))
-    
-    # Relationships
-    home_matches = db.relationship('Match', foreign_keys='Match.home_team_id', backref='home_team', lazy=True)
-    away_matches = db.relationship('Match', foreign_keys='Match.away_team_id', backref='away_team', lazy=True)
-    picks = db.relationship('Pick', backref='chosen_team', lazy=True)
+    abbreviation = db.Column(db.String(10), unique=True, nullable=False)
+    logo_url = db.Column(db.String(200))
 
 class Match(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     week = db.Column(db.Integer, nullable=False)
-    season = db.Column(db.Integer, default=2025)
     home_team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
     away_team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
-    start_time = db.Column(db.DateTime, nullable=False)
-    
-    # Ergebnisse
-    home_score = db.Column(db.Integer)
-    away_score = db.Column(db.Integer)
-    winner_team_id = db.Column(db.Integer, db.ForeignKey('team.id'))
+    start_time = db.Column(db.DateTime(timezone=True))
     is_completed = db.Column(db.Boolean, default=False)
-    status = db.Column(db.String(20), default='scheduled')  # scheduled, in_progress, completed
+    winner_team_id = db.Column(db.Integer, db.ForeignKey('team.id'))
+    home_score = db.Column(db.Integer, default=0)
+    away_score = db.Column(db.Integer, default=0)
     
-    # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relationships
-    picks = db.relationship('Pick', backref='match', lazy=True)
+    home_team = db.relationship('Team', foreign_keys=[home_team_id], backref='home_matches')
+    away_team = db.relationship('Team', foreign_keys=[away_team_id], backref='away_matches')
     winner_team = db.relationship('Team', foreign_keys=[winner_team_id])
 
 class Pick(db.Model):
@@ -114,461 +75,385 @@ class Pick(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     match_id = db.Column(db.Integer, db.ForeignKey('match.id'), nullable=False)
     chosen_team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=datetime.utcnow)
     
-    # Ergebnisse
-    points_earned = db.Column(db.Integer, default=0)
-    is_correct = db.Column(db.Boolean)
-    
-    # Timestamps
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Unique constraint: Ein User kann nur einen Pick pro Woche haben
-    __table_args__ = (db.UniqueConstraint('user_id', 'match_id', name='unique_user_match_pick'),)
+    user = db.relationship('User', backref='picks')
+    match = db.relationship('Match', backref='picks')
+    chosen_team = db.relationship('Team')
 
 class TeamWinnerUsage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationships
-    team = db.relationship('Team', backref='winner_usage')
+    user = db.relationship('User')
+    team = db.relationship('Team')
 
 class TeamLoserUsage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     team_id = db.Column(db.Integer, db.ForeignKey('team.id'), nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Relationships
-    team = db.relationship('Team', backref='loser_usage')
+    user = db.relationship('User')
+    team = db.relationship('Team')
 
-# ===== INITIALIZATION =====
+# Import ESPN modules
+from espn_data_sync import ESPNDataSync
+from espn_points_calculator import ESPNPointsCalculator
+from espn_scheduler import ESPNScheduler
+
+# Initialize ESPN components
+espn_sync = None
+points_calculator = None
+espn_scheduler = None
+
+def initialize_espn_components():
+    """Initialize ESPN components after app context is available"""
+    global espn_sync, points_calculator, espn_scheduler
+    
+    try:
+        logger.info("🔧 Initializing ESPN components...")
+        
+        espn_sync = ESPNDataSync(app, db)
+        points_calculator = ESPNPointsCalculator(app, db)
+        espn_scheduler = ESPNScheduler(app, espn_sync, points_calculator)
+        
+        logger.info("✅ ESPN components initialized")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Error initializing ESPN components: {e}")
+        return False
 
 def initialize_database():
-    """Initialisiert die Datenbank mit Teams und echten NFL-Daten"""
-    logger.info("🔧 Initializing database with REAL NFL data...")
-    
-    with app.app_context():
+    """Initialize database with real NFL data from ESPN"""
+    try:
+        logger.info("🔧 Initializing database with ESPN NFL data...")
+        
+        # Create all tables
         db.create_all()
         
-        # Teams erstellen falls nicht vorhanden
-        if Team.query.count() == 0:
-            create_nfl_teams()
+        # Initialize ESPN components
+        if not initialize_espn_components():
+            logger.error("❌ Failed to initialize ESPN components")
+            return False
         
-        # Test-User erstellen falls nicht vorhanden
-        if User.query.count() == 0:
-            create_test_users()
+        # Create test users
+        create_test_users()
         
-        # ECHTE NFL-Daten laden (keine Mock-Daten!)
-        if Match.query.count() == 0:
-            sync_real_nfl_data()
+        # Perform full ESPN data sync
+        logger.info("🔄 Performing full ESPN data sync...")
+        if espn_sync.full_sync():
+            logger.info("✅ ESPN data sync completed")
+        else:
+            logger.warning("⚠️ ESPN data sync failed, using fallback")
         
-        # Historische Picks erstellen falls nicht vorhanden
-        if Pick.query.count() == 0:
-            create_real_historical_picks()
+        # Create historical picks
+        create_historical_picks()
         
-        # Team Usage für bereits begonnene Spiele verarbeiten
-        process_team_usage_for_started_games()
+        # Validate completed games and calculate points
+        points_calculator.validate_completed_games()
         
-        # Team-Logos aktualisieren
-        update_team_logos_in_database()
+        # Start scheduler
+        espn_scheduler.start_scheduler()
         
-        logger.info("✅ Database initialization completed with REAL NFL data")
-
-def create_nfl_teams():
-    """Erstellt alle 32 NFL Teams"""
-    nfl_teams = [
-        # AFC East
-        ('Buffalo Bills', 'BUF', 'AFC', 'East'),
-        ('Miami Dolphins', 'MIA', 'AFC', 'East'),
-        ('New England Patriots', 'NE', 'AFC', 'East'),
-        ('New York Jets', 'NYJ', 'AFC', 'East'),
+        logger.info("✅ Database initialization completed with ESPN NFL data")
+        return True
         
-        # AFC North
-        ('Baltimore Ravens', 'BAL', 'AFC', 'North'),
-        ('Cincinnati Bengals', 'CIN', 'AFC', 'North'),
-        ('Cleveland Browns', 'CLE', 'AFC', 'North'),
-        ('Pittsburgh Steelers', 'PIT', 'AFC', 'North'),
-        
-        # AFC South
-        ('Houston Texans', 'HOU', 'AFC', 'South'),
-        ('Indianapolis Colts', 'IND', 'AFC', 'South'),
-        ('Jacksonville Jaguars', 'JAX', 'AFC', 'South'),
-        ('Tennessee Titans', 'TEN', 'AFC', 'South'),
-        
-        # AFC West
-        ('Denver Broncos', 'DEN', 'AFC', 'West'),
-        ('Kansas City Chiefs', 'KC', 'AFC', 'West'),
-        ('Las Vegas Raiders', 'LV', 'AFC', 'West'),
-        ('Los Angeles Chargers', 'LAC', 'AFC', 'West'),
-        
-        # NFC East
-        ('Dallas Cowboys', 'DAL', 'NFC', 'East'),
-        ('New York Giants', 'NYG', 'NFC', 'East'),
-        ('Philadelphia Eagles', 'PHI', 'NFC', 'East'),
-        ('Washington Commanders', 'WAS', 'NFC', 'East'),
-        
-        # NFC North
-        ('Chicago Bears', 'CHI', 'NFC', 'North'),
-        ('Detroit Lions', 'DET', 'NFC', 'North'),
-        ('Green Bay Packers', 'GB', 'NFC', 'North'),
-        ('Minnesota Vikings', 'MIN', 'NFC', 'North'),
-        
-        # NFC South
-        ('Atlanta Falcons', 'ATL', 'NFC', 'South'),
-        ('Carolina Panthers', 'CAR', 'NFC', 'South'),
-        ('New Orleans Saints', 'NO', 'NFC', 'South'),
-        ('Tampa Bay Buccaneers', 'TB', 'NFC', 'South'),
-        
-        # NFC West
-        ('Arizona Cardinals', 'ARI', 'NFC', 'West'),
-        ('Los Angeles Rams', 'LAR', 'NFC', 'West'),
-        ('San Francisco 49ers', 'SF', 'NFC', 'West'),
-        ('Seattle Seahawks', 'SEA', 'NFC', 'West'),
-    ]
-    
-    for name, abbr, conf, div in nfl_teams:
-        logo_url = get_team_logo_url(abbr)
-        team = Team(
-            name=name,
-            abbreviation=abbr,
-            conference=conf,
-            division=div,
-            logo_url=logo_url
-        )
-        db.session.add(team)
-    
-    db.session.commit()
-    logger.info("✅ Created 32 NFL teams")
+    except Exception as e:
+        logger.error(f"❌ Error initializing database: {e}")
+        return False
 
 def create_test_users():
-    """Erstellt Test-User"""
-    test_users = [
-        ('Manuel', 'Manuel1'),
-        ('Daniel', 'Daniel1'),
-        ('Raff', 'Raff1'),
-        ('Haunschi', 'Haunschi1')
-    ]
-    
-    for username, password in test_users:
-        user = User(username=username)
-        user.set_password(password)
-        db.session.add(user)
-    
-    db.session.commit()
-    logger.info("✅ Created test users")
+    """Create test users"""
+    try:
+        test_users = [
+            {'username': 'Manuel', 'password': 'Manuel1'},
+            {'username': 'Daniel', 'password': 'Daniel1'},
+            {'username': 'Raff', 'password': 'Raff1'},
+            {'username': 'Haunschi', 'password': 'Haunschi1'}
+        ]
+        
+        for user_data in test_users:
+            existing_user = User.query.filter_by(username=user_data['username']).first()
+            if not existing_user:
+                user = User(username=user_data['username'])
+                user.set_password(user_data['password'])
+                db.session.add(user)
+        
+        db.session.commit()
+        logger.info("✅ Test users created")
+        
+    except Exception as e:
+        logger.error(f"❌ Error creating test users: {e}")
 
-# ===== API ENDPOINTS =====
+def create_historical_picks():
+    """Create historical picks for test users"""
+    try:
+        logger.info("🔄 Creating historical picks...")
+        
+        # Historical picks data
+        historical_picks = [
+            # Week 1
+            {'username': 'Manuel', 'week': 1, 'winner': 'ATL', 'loser': 'TB'},
+            {'username': 'Daniel', 'week': 1, 'winner': 'DEN', 'loser': 'TEN'},
+            {'username': 'Raff', 'week': 1, 'winner': 'CIN', 'loser': 'CLE'},
+            {'username': 'Haunschi', 'week': 1, 'winner': 'WAS', 'loser': 'NYG'},
+            # Week 2
+            {'username': 'Manuel', 'week': 2, 'winner': 'DAL', 'loser': 'NYG'},
+            {'username': 'Daniel', 'week': 2, 'winner': 'PHI', 'loser': 'KC'},
+            {'username': 'Raff', 'week': 2, 'winner': 'DAL', 'loser': 'NYG'},
+            {'username': 'Haunschi', 'week': 2, 'winner': 'BUF', 'loser': 'NYJ'}
+        ]
+        
+        for pick_data in historical_picks:
+            user = User.query.filter_by(username=pick_data['username']).first()
+            if not user:
+                continue
+            
+            # Find the match
+            winner_team = Team.query.filter_by(abbreviation=pick_data['winner']).first()
+            loser_team = Team.query.filter_by(abbreviation=pick_data['loser']).first()
+            
+            if not winner_team or not loser_team:
+                continue
+            
+            # Find match where these teams played
+            match = Match.query.filter_by(week=pick_data['week']).filter(
+                ((Match.home_team_id == winner_team.id) & (Match.away_team_id == loser_team.id)) |
+                ((Match.home_team_id == loser_team.id) & (Match.away_team_id == winner_team.id))
+            ).first()
+            
+            if match:
+                # Check if pick already exists
+                existing_pick = Pick.query.filter_by(user_id=user.id, match_id=match.id).first()
+                if not existing_pick:
+                    pick = Pick(
+                        user_id=user.id,
+                        match_id=match.id,
+                        chosen_team_id=winner_team.id
+                    )
+                    db.session.add(pick)
+        
+        db.session.commit()
+        logger.info("✅ Historical picks created")
+        
+    except Exception as e:
+        logger.error(f"❌ Error creating historical picks: {e}")
 
-# Import Pick API Endpoints
-from pick_api_endpoints import register_pick_endpoints
-
-# Basis-Endpoints
+# Routes
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/api/auth/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-    
-    user = User.query.filter_by(username=username).first()
-    
-    if user and user.check_password(password):
-        session['user_id'] = user.id
-        session['username'] = user.username
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
         
-        return jsonify({
-            'success': True,
-            'message': 'Login erfolgreich',
-            'user': {
-                'id': user.id,
-                'username': user.username
-            }
-        })
-    else:
-        return jsonify({
-            'success': False,
-            'message': 'Ungültige Anmeldedaten'
-        }), 401
+        user = User.query.filter_by(username=username).first()
+        
+        if user and user.check_password(password):
+            session['user_id'] = user.id
+            session['username'] = user.username
+            return jsonify({'success': True, 'username': user.username})
+        else:
+            return jsonify({'success': False, 'message': 'Invalid credentials'})
+            
+    except Exception as e:
+        logger.error(f"❌ Login error: {e}")
+        return jsonify({'success': False, 'message': 'Login failed'})
 
 @app.route('/api/auth/logout', methods=['POST'])
 def logout():
     session.clear()
-    return jsonify({'success': True, 'message': 'Logout erfolgreich'})
+    return jsonify({'success': True})
 
-@app.route('/api/auth/session', methods=['GET'])
+@app.route('/api/auth/check', methods=['GET'])
 def check_session():
     if 'user_id' in session:
-        user = User.query.get(session['user_id'])
-        return jsonify({
-            'logged_in': True,
-            'user': {
-                'id': user.id,
-                'username': user.username,
-                'score': user.get_score(),
-                'rank': user.get_rank()
-            }
-        })
+        return jsonify({'logged_in': True, 'username': session['username']})
     else:
         return jsonify({'logged_in': False})
 
-@app.route('/api/leaderboard', methods=['GET'])
-def get_leaderboard():
-    users = User.query.all()
-    leaderboard = []
-    
-    for user in users:
-        leaderboard.append({
-            'username': user.username,
-            'score': user.get_score(),
-            'rank': user.get_rank()
+@app.route('/api/current-week')
+def get_current_week():
+    try:
+        if espn_sync:
+            current_week = espn_sync.get_current_week()
+        else:
+            current_week = 3  # Fallback
+        
+        return jsonify({'success': True, 'current_week': current_week})
+    except Exception as e:
+        logger.error(f"❌ Error getting current week: {e}")
+        return jsonify({'success': False, 'current_week': 3})
+
+@app.route('/api/matches/<int:week>')
+def get_matches(week):
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Not logged in'})
+        
+        user_id = session['user_id']
+        
+        # Get matches for the week
+        matches = Match.query.filter_by(week=week).all()
+        
+        # Get user's pick for this week
+        user_pick = None
+        if matches:
+            for match in matches:
+                pick = Pick.query.filter_by(user_id=user_id, match_id=match.id).first()
+                if pick:
+                    user_pick = {
+                        'match_id': match.id,
+                        'chosen_team_id': pick.chosen_team_id
+                    }
+                    break
+        
+        # Format matches
+        matches_data = []
+        for match in matches:
+            # Check if game has started
+            now = datetime.now(timezone.utc)
+            has_started = match.start_time and match.start_time <= now
+            
+            matches_data.append({
+                'id': match.id,
+                'week': match.week,
+                'home_team': {
+                    'id': match.home_team.id,
+                    'name': match.home_team.name,
+                    'abbreviation': match.home_team.abbreviation,
+                    'logo_url': match.home_team.logo_url
+                },
+                'away_team': {
+                    'id': match.away_team.id,
+                    'name': match.away_team.name,
+                    'abbreviation': match.away_team.abbreviation,
+                    'logo_url': match.away_team.logo_url
+                },
+                'start_time': match.start_time.isoformat() if match.start_time else None,
+                'is_completed': match.is_completed,
+                'has_started': has_started,
+                'home_score': match.home_score,
+                'away_score': match.away_score,
+                'winner_team_id': match.winner_team_id
+            })
+        
+        return jsonify({
+            'success': True,
+            'matches': matches_data,
+            'user_pick': user_pick
         })
-    
-    # Sortiere nach Punkten (höchste zuerst)
-    leaderboard.sort(key=lambda x: x['score'], reverse=True)
-    
-    return jsonify({
-        'success': True,
-        'leaderboard': leaderboard
-    })
+        
+    except Exception as e:
+        logger.error(f"❌ Error getting matches: {e}")
+        return jsonify({'success': False, 'matches': [], 'user_pick': None})
 
-@app.route('/api/user/team-usage', methods=['GET'])
+@app.route('/api/picks/create', methods=['POST'])
+def create_pick():
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Not logged in'})
+        
+        data = request.get_json()
+        user_id = session['user_id']
+        match_id = data.get('match_id')
+        chosen_team_id = data.get('chosen_team_id')
+        
+        # Validate match exists
+        match = Match.query.get(match_id)
+        if not match:
+            return jsonify({'success': False, 'message': 'Match not found'})
+        
+        # Check if game has started
+        now = datetime.now(timezone.utc)
+        if match.start_time and match.start_time <= now:
+            return jsonify({'success': False, 'message': 'Game has already started'})
+        
+        # Check if user already has a pick for this week
+        existing_picks = Pick.query.join(Match).filter(
+            Pick.user_id == user_id,
+            Match.week == match.week
+        ).all()
+        
+        # Remove existing picks for this week
+        for pick in existing_picks:
+            db.session.delete(pick)
+        
+        # Create new pick
+        pick = Pick(
+            user_id=user_id,
+            match_id=match_id,
+            chosen_team_id=chosen_team_id
+        )
+        db.session.add(pick)
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': 'Pick saved successfully'})
+        
+    except Exception as e:
+        logger.error(f"❌ Error creating pick: {e}")
+        return jsonify({'success': False, 'message': 'Failed to save pick'})
+
+@app.route('/api/leaderboard')
+def get_leaderboard():
+    try:
+        if points_calculator:
+            leaderboard = points_calculator.get_leaderboard()
+        else:
+            # Fallback leaderboard
+            users = User.query.all()
+            leaderboard = []
+            for i, user in enumerate(users):
+                leaderboard.append({
+                    'rank': i + 1,
+                    'username': user.username,
+                    'score': user.get_score()
+                })
+        
+        return jsonify({'success': True, 'leaderboard': leaderboard})
+        
+    except Exception as e:
+        logger.error(f"❌ Error getting leaderboard: {e}")
+        return jsonify({'success': False, 'leaderboard': []})
+
+@app.route('/api/user/team-usage')
 def get_team_usage():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Nicht eingeloggt'}), 401
-    
-    user_id = session['user_id']
-    
-    # Winner Usage
-    winner_usage = db.session.query(TeamWinnerUsage, Team).join(Team).filter(
-        TeamWinnerUsage.user_id == user_id
-    ).all()
-    
-    # Loser Usage
-    loser_usage = db.session.query(TeamLoserUsage, Team).join(Team).filter(
-        TeamLoserUsage.user_id == user_id
-    ).all()
-    
-    winner_teams = [{'name': team.name, 'abbreviation': team.abbreviation} for _, team in winner_usage]
-    loser_teams = [{'name': team.name, 'abbreviation': team.abbreviation} for _, team in loser_usage]
-    
-    return jsonify({
-        'success': True,
-        'winner_teams': winner_teams,
-        'loser_teams': loser_teams
-    })
+    try:
+        if 'user_id' not in session:
+            return jsonify({'success': False, 'message': 'Not logged in'})
+        
+        user_id = session['user_id']
+        
+        # Get team usage
+        winner_usage = TeamWinnerUsage.query.filter_by(user_id=user_id).all()
+        loser_usage = TeamLoserUsage.query.filter_by(user_id=user_id).all()
+        
+        winners = [{'team_id': usage.team_id, 'team_name': usage.team.name} for usage in winner_usage]
+        losers = [{'team_id': usage.team_id, 'team_name': usage.team.name} for usage in loser_usage]
+        
+        return jsonify({
+            'success': True,
+            'winners': winners,
+            'losers': losers
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Error getting team usage: {e}")
+        return jsonify({'success': False, 'winners': [], 'losers': []})
 
-# ===== SCHEDULER SETUP =====
-
-def setup_scheduler():
-    """Setzt den Scheduler für automatische NFL-Syncs auf"""
-    scheduler = BackgroundScheduler()
-    
-    # Täglicher NFL Results Sync um 07:00 Wiener Zeit
-    scheduler.add_job(
-        func=run_daily_nfl_validation,
-        trigger=CronTrigger(hour=7, minute=0, timezone=vienna_tz),
-        id='daily_nfl_validation',
-        name='Daily NFL Results Validation',
-        replace_existing=True
-    )
-    
-    # Wöchentlicher Schedule Sync jeden Dienstag um 07:00 Wiener Zeit
-    scheduler.add_job(
-        func=run_weekly_schedule_sync,
-        trigger=CronTrigger(day_of_week=1, hour=7, minute=0, timezone=vienna_tz),  # Dienstag = 1
-        id='weekly_schedule_sync',
-        name='Weekly NFL Schedule Sync',
-        replace_existing=True
-    )
-    
-    scheduler.start()
-    logger.info("✅ Scheduler started for NFL syncs")
-
-def run_daily_nfl_validation():
-    """Wrapper für tägliche NFL Validierung"""
-    with app.app_context():
-        validator = NFLResultsValidator()
-        validator.run_daily_validation()
-
-def run_weekly_schedule_sync():
-    """Wrapper für wöchentlichen Schedule Sync"""
-    with app.app_context():
-        # Hier würde der NFL Schedule Sync laufen
-        logger.info("🔄 Running weekly NFL schedule sync...")
-
-# ===== MAIN =====
-
-# Registriere Pick API Endpoints (außerhalb von __main__)
+# Register pick API endpoints
+from pick_api_endpoints import register_pick_endpoints
 register_pick_endpoints(app)
 
 if __name__ == '__main__':
-    # Initialisiere Datenbank
-    initialize_database()
+    with app.app_context():
+        initialize_database()
     
-    # Starte Scheduler
-    setup_scheduler()
-    
-    # Starte Flask App
-    logger.info("🚀 Starting NFL PickEm 2025 App...")
-    app.run(host='0.0.0.0', port=5000, debug=True)
-
-
-
-def sync_real_nfl_data():
-    """Synchronisiert echte NFL-Daten von SportsData.io"""
-    try:
-        from real_nfl_data_sync import RealNFLDataSync
-        
-        nfl_sync = RealNFLDataSync()
-        success = nfl_sync.sync_real_nfl_data(app, db, Team, Match)
-        
-        if success:
-            logger.info("✅ Real NFL data sync completed successfully")
-        else:
-            logger.warning("⚠️ Real NFL data sync failed, using fallback data")
-            # Fallback: Erstelle minimale Test-Daten
-            create_fallback_test_data()
-            
-    except Exception as e:
-        logger.error(f"❌ Failed to sync real NFL data: {e}")
-        # Fallback: Erstelle minimale Test-Daten
-        create_fallback_test_data()
-
-def create_fallback_test_data():
-    """Erstellt minimale Test-Daten als Fallback"""
-    logger.info("🔄 Creating fallback test data...")
-    
-    from datetime import datetime, timedelta
-    import pytz
-    
-    vienna_tz = pytz.timezone('Europe/Vienna')
-    base_date = datetime(2025, 9, 19, 19, 0)  # Woche 3 Start
-    
-    # Nur wenige Test-Spiele für Woche 3
-    test_games = [
-        ('BUF', 'JAX'),
-        ('MIA', 'SEA'),
-        ('NYJ', 'NE'),
-    ]
-    
-    for i, (away, home) in enumerate(test_games):
-        away_team = Team.query.filter_by(abbreviation=away).first()
-        home_team = Team.query.filter_by(abbreviation=home).first()
-        
-        if away_team and home_team:
-            game_time = base_date + timedelta(hours=i*2)
-            match = Match(
-                week=3,
-                away_team_id=away_team.id,
-                home_team_id=home_team.id,
-                start_time=vienna_tz.localize(game_time),
-                is_completed=False
-            )
-            db.session.add(match)
-    
-    db.session.commit()
-    logger.info("✅ Fallback test data created")
-
-def create_real_historical_picks():
-    """Erstellt historische Picks basierend auf echten NFL-Spielen"""
-    logger.info("🔄 Creating real historical picks...")
-    
-    try:
-        # Manuel's Picks
-        manuel = User.query.filter_by(username='Manuel').first()
-        if manuel:
-            # Woche 1: Falcons W vs Buccaneers L
-            create_historical_pick(manuel.id, 1, 'ATL', 'TB', 'ATL')
-            # Woche 2: Cowboys W vs Giants L  
-            create_historical_pick(manuel.id, 2, 'DAL', 'NYG', 'DAL')
-        
-        # Daniel's Picks
-        daniel = User.query.filter_by(username='Daniel').first()
-        if daniel:
-            # Woche 1: Broncos W vs Titans L
-            create_historical_pick(daniel.id, 1, 'DEN', 'TEN', 'DEN')
-            # Woche 2: Eagles W vs Chiefs L
-            create_historical_pick(daniel.id, 2, 'PHI', 'KC', 'PHI')
-        
-        # Raff's Picks
-        raff = User.query.filter_by(username='Raff').first()
-        if raff:
-            # Woche 1: Bengals W vs Browns L
-            create_historical_pick(raff.id, 1, 'CIN', 'CLE', 'CIN')
-            # Woche 2: Cowboys W vs Giants L
-            create_historical_pick(raff.id, 2, 'DAL', 'NYG', 'DAL')
-        
-        # Haunschi's Picks
-        haunschi = User.query.filter_by(username='Haunschi').first()
-        if haunschi:
-            # Woche 1: Commanders W vs Giants L
-            create_historical_pick(haunschi.id, 1, 'WAS', 'NYG', 'WAS')
-            # Woche 2: Bills W vs Jets L
-            create_historical_pick(haunschi.id, 2, 'BUF', 'NYJ', 'BUF')
-        
-        db.session.commit()
-        logger.info("✅ Real historical picks created")
-        
-    except Exception as e:
-        logger.error(f"❌ Failed to create historical picks: {e}")
-
-def create_historical_pick(user_id, week, team1_abbr, team2_abbr, chosen_team_abbr):
-    """Erstellt einen historischen Pick für ein echtes NFL-Spiel"""
-    try:
-        # Finde das Match zwischen den beiden Teams in der Woche
-        team1 = Team.query.filter_by(abbreviation=team1_abbr).first()
-        team2 = Team.query.filter_by(abbreviation=team2_abbr).first()
-        chosen_team = Team.query.filter_by(abbreviation=chosen_team_abbr).first()
-        
-        if not team1 or not team2 or not chosen_team:
-            logger.warning(f"⚠️ Teams not found for pick: {team1_abbr} vs {team2_abbr}")
-            return
-        
-        # Finde Match (team1 vs team2 oder team2 vs team1)
-        match = Match.query.filter_by(week=week).filter(
-            ((Match.away_team_id == team1.id) & (Match.home_team_id == team2.id)) |
-            ((Match.away_team_id == team2.id) & (Match.home_team_id == team1.id))
-        ).first()
-        
-        if not match:
-            logger.warning(f"⚠️ Match not found for week {week}: {team1_abbr} vs {team2_abbr}")
-            return
-        
-        # Prüfe ob Pick bereits existiert
-        existing_pick = Pick.query.filter_by(user_id=user_id, match_id=match.id).first()
-        if existing_pick:
-            logger.debug(f"📋 Pick already exists for user {user_id}, match {match.id}")
-            return
-        
-        # Erstelle Pick
-        pick = Pick(
-            user_id=user_id,
-            match_id=match.id,
-            chosen_team_id=chosen_team.id
-        )
-        db.session.add(pick)
-        
-        logger.debug(f"✅ Created historical pick: User {user_id}, {chosen_team_abbr} in {team1_abbr} vs {team2_abbr}")
-        
-    except Exception as e:
-        logger.error(f"❌ Failed to create historical pick: {e}")
-
-def process_team_usage_for_started_games():
-    """Verarbeitet Team Usage für bereits begonnene Spiele"""
-    try:
-        from real_team_usage_tracker import RealTeamUsageTracker
-        
-        usage_tracker = RealTeamUsageTracker(app, db)
-        processed_count = usage_tracker.process_all_started_games()
-        
-        logger.info(f"✅ Processed team usage for {processed_count} started games")
-        
-    except Exception as e:
-        logger.error(f"❌ Failed to process team usage: {e}")
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
 

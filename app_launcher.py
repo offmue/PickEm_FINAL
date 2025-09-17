@@ -1,35 +1,46 @@
-#!/usr/bin/env python3
 """
-App Launcher für NFL PickEm 2025 auf Render.com
-Initialisiert Datenbank und startet die App
+NFL PickEm 2025 App Launcher for Render.com
+Handles initialization and startup for production deployment
 """
 
+import logging
 import os
 import sys
-import logging
 
-# Logging setup
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(levelname)s:%(name)s:%(message)s'
+)
 logger = logging.getLogger(__name__)
 
 def main():
-    """Hauptfunktion für App-Start auf Render.com"""
-    logger.info("🚀 Starting NFL PickEm 2025 App Launcher...")
-    
+    """Main launcher function"""
     try:
-        # Import der App (API-Endpoints werden automatisch registriert)
+        logger.info("🚀 Starting NFL PickEm 2025 App Launcher...")
+        
+        # Import and start the Flask app
         from app import app, initialize_database
         
-        # Datenbank initialisieren
-        logger.info("🔧 Initializing database...")
-        initialize_database()
+        # Initialize database in app context
+        with app.app_context():
+            logger.info("🔧 Initializing database...")
+            if initialize_database():
+                logger.info("✅ Database initialization completed")
+            else:
+                logger.warning("⚠️ Database initialization had issues, but continuing...")
         
-        # Port von Umgebungsvariable oder Default
-        port = int(os.environ.get('PORT', 5000))
-        
-        # App starten
+        # Get port from environment
+        port = int(os.environ.get('PORT', 10000))
         logger.info(f"🌐 Starting app on port {port}...")
-        app.run(host='0.0.0.0', port=port, debug=False)
+        
+        # Start the Flask app
+        app.run(
+            host='0.0.0.0',
+            port=port,
+            debug=False,
+            threaded=True
+        )
         
     except Exception as e:
         logger.error(f"❌ Error starting app: {e}")
