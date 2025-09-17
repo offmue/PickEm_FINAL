@@ -1119,18 +1119,5 @@ def get_team_usage():
 
 
 
-@app.route("/api/user/team-usage", methods=["GET"])
-def get_team_usage():
-    user_id = request.args.get("user_id")
-    if not user_id:
-        return jsonify({"error": "User ID is required"}), 400
-
-    winner_usage = db.session.query(Team.name, db.func.count(TeamWinnerUsage.id)).join(TeamWinnerUsage).filter(TeamWinnerUsage.user_id == user_id).group_by(Team.name).all()
-    loser_usage = db.session.query(Team.name).join(TeamLoserUsage).filter(TeamLoserUsage.user_id == user_id).all()
-
-    winners = [{"name": name, "count": count} for name, count in winner_usage]
-    losers = [{"name": name} for name, in loser_usage]
-
-    return jsonify({"winners": winners, "losers": losers})
-
-
+if __name__ == '__main__':
+    app.run(debug=True)
