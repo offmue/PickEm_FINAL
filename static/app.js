@@ -240,7 +240,7 @@ function updateCountdown(targetDate) {
     if (diff <= 0) {
         const countdownElement = document.getElementById('countdown-timer');
         if (countdownElement) {
-            countdownElement.innerHTML = '<span>Football-Sunday ist da! 🏈</span>';
+            countdownElement.innerHTML = '<span>Football-Sunday (REDZONE) ist da! 🔥🏈</span>';
         }
         return;
     }
@@ -253,7 +253,7 @@ function updateCountdown(targetDate) {
     const countdownElement = document.getElementById('countdown-timer');
     if (countdownElement) {
         countdownElement.innerHTML = `
-            <span>Football-Sunday:</span>
+            <span>Football-Sunday (REDZONE) 🔥:</span>
             <span>${days}d ${hours}h ${minutes}m ${seconds}s</span>
         `;
     }
@@ -736,8 +736,6 @@ function loadLeaderboardData() {
             leaderboardContainer.innerHTML = '<h2>Rangliste</h2><p>Fehler beim Laden der Rangliste</p>';
         }
     });
-}
-
 }
 
 // Load All Picks Data
