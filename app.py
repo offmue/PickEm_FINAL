@@ -147,8 +147,8 @@ class TeamLoserUsage(db.Model):
 # ===== INITIALIZATION =====
 
 def initialize_database():
-    """Initialisiert die Datenbank mit Teams und Test-Daten"""
-    logger.info("🔧 Initializing database...")
+    """Initialisiert die Datenbank mit Teams und echten NFL-Daten"""
+    logger.info("🔧 Initializing database with REAL NFL data...")
     
     with app.app_context():
         db.create_all()
@@ -161,10 +161,21 @@ def initialize_database():
         if User.query.count() == 0:
             create_test_users()
         
+        # ECHTE NFL-Daten laden (keine Mock-Daten!)
+        if Match.query.count() == 0:
+            sync_real_nfl_data()
+        
+        # Historische Picks erstellen falls nicht vorhanden
+        if Pick.query.count() == 0:
+            create_real_historical_picks()
+        
+        # Team Usage für bereits begonnene Spiele verarbeiten
+        process_team_usage_for_started_games()
+        
         # Team-Logos aktualisieren
         update_team_logos_in_database()
         
-        logger.info("✅ Database initialization completed")
+        logger.info("✅ Database initialization completed with REAL NFL data")
 
 def create_nfl_teams():
     """Erstellt alle 32 NFL Teams"""
@@ -406,4 +417,158 @@ if __name__ == '__main__':
     # Starte Flask App
     logger.info("🚀 Starting NFL PickEm 2025 App...")
     app.run(host='0.0.0.0', port=5000, debug=True)
+
+
+
+def sync_real_nfl_data():
+    """Synchronisiert echte NFL-Daten von SportsData.io"""
+    try:
+        from real_nfl_data_sync import RealNFLDataSync
+        
+        nfl_sync = RealNFLDataSync()
+        success = nfl_sync.sync_real_nfl_data(app, db, Team, Match)
+        
+        if success:
+            logger.info("✅ Real NFL data sync completed successfully")
+        else:
+            logger.warning("⚠️ Real NFL data sync failed, using fallback data")
+            # Fallback: Erstelle minimale Test-Daten
+            create_fallback_test_data()
+            
+    except Exception as e:
+        logger.error(f"❌ Failed to sync real NFL data: {e}")
+        # Fallback: Erstelle minimale Test-Daten
+        create_fallback_test_data()
+
+def create_fallback_test_data():
+    """Erstellt minimale Test-Daten als Fallback"""
+    logger.info("🔄 Creating fallback test data...")
+    
+    from datetime import datetime, timedelta
+    import pytz
+    
+    vienna_tz = pytz.timezone('Europe/Vienna')
+    base_date = datetime(2025, 9, 19, 19, 0)  # Woche 3 Start
+    
+    # Nur wenige Test-Spiele für Woche 3
+    test_games = [
+        ('BUF', 'JAX'),
+        ('MIA', 'SEA'),
+        ('NYJ', 'NE'),
+    ]
+    
+    for i, (away, home) in enumerate(test_games):
+        away_team = Team.query.filter_by(abbreviation=away).first()
+        home_team = Team.query.filter_by(abbreviation=home).first()
+        
+        if away_team and home_team:
+            game_time = base_date + timedelta(hours=i*2)
+            match = Match(
+                week=3,
+                away_team_id=away_team.id,
+                home_team_id=home_team.id,
+                start_time=vienna_tz.localize(game_time),
+                is_completed=False
+            )
+            db.session.add(match)
+    
+    db.session.commit()
+    logger.info("✅ Fallback test data created")
+
+def create_real_historical_picks():
+    """Erstellt historische Picks basierend auf echten NFL-Spielen"""
+    logger.info("🔄 Creating real historical picks...")
+    
+    try:
+        # Manuel's Picks
+        manuel = User.query.filter_by(username='Manuel').first()
+        if manuel:
+            # Woche 1: Falcons W vs Buccaneers L
+            create_historical_pick(manuel.id, 1, 'ATL', 'TB', 'ATL')
+            # Woche 2: Cowboys W vs Giants L  
+            create_historical_pick(manuel.id, 2, 'DAL', 'NYG', 'DAL')
+        
+        # Daniel's Picks
+        daniel = User.query.filter_by(username='Daniel').first()
+        if daniel:
+            # Woche 1: Broncos W vs Titans L
+            create_historical_pick(daniel.id, 1, 'DEN', 'TEN', 'DEN')
+            # Woche 2: Eagles W vs Chiefs L
+            create_historical_pick(daniel.id, 2, 'PHI', 'KC', 'PHI')
+        
+        # Raff's Picks
+        raff = User.query.filter_by(username='Raff').first()
+        if raff:
+            # Woche 1: Bengals W vs Browns L
+            create_historical_pick(raff.id, 1, 'CIN', 'CLE', 'CIN')
+            # Woche 2: Cowboys W vs Giants L
+            create_historical_pick(raff.id, 2, 'DAL', 'NYG', 'DAL')
+        
+        # Haunschi's Picks
+        haunschi = User.query.filter_by(username='Haunschi').first()
+        if haunschi:
+            # Woche 1: Commanders W vs Giants L
+            create_historical_pick(haunschi.id, 1, 'WAS', 'NYG', 'WAS')
+            # Woche 2: Bills W vs Jets L
+            create_historical_pick(haunschi.id, 2, 'BUF', 'NYJ', 'BUF')
+        
+        db.session.commit()
+        logger.info("✅ Real historical picks created")
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to create historical picks: {e}")
+
+def create_historical_pick(user_id, week, team1_abbr, team2_abbr, chosen_team_abbr):
+    """Erstellt einen historischen Pick für ein echtes NFL-Spiel"""
+    try:
+        # Finde das Match zwischen den beiden Teams in der Woche
+        team1 = Team.query.filter_by(abbreviation=team1_abbr).first()
+        team2 = Team.query.filter_by(abbreviation=team2_abbr).first()
+        chosen_team = Team.query.filter_by(abbreviation=chosen_team_abbr).first()
+        
+        if not team1 or not team2 or not chosen_team:
+            logger.warning(f"⚠️ Teams not found for pick: {team1_abbr} vs {team2_abbr}")
+            return
+        
+        # Finde Match (team1 vs team2 oder team2 vs team1)
+        match = Match.query.filter_by(week=week).filter(
+            ((Match.away_team_id == team1.id) & (Match.home_team_id == team2.id)) |
+            ((Match.away_team_id == team2.id) & (Match.home_team_id == team1.id))
+        ).first()
+        
+        if not match:
+            logger.warning(f"⚠️ Match not found for week {week}: {team1_abbr} vs {team2_abbr}")
+            return
+        
+        # Prüfe ob Pick bereits existiert
+        existing_pick = Pick.query.filter_by(user_id=user_id, match_id=match.id).first()
+        if existing_pick:
+            logger.debug(f"📋 Pick already exists for user {user_id}, match {match.id}")
+            return
+        
+        # Erstelle Pick
+        pick = Pick(
+            user_id=user_id,
+            match_id=match.id,
+            chosen_team_id=chosen_team.id
+        )
+        db.session.add(pick)
+        
+        logger.debug(f"✅ Created historical pick: User {user_id}, {chosen_team_abbr} in {team1_abbr} vs {team2_abbr}")
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to create historical pick: {e}")
+
+def process_team_usage_for_started_games():
+    """Verarbeitet Team Usage für bereits begonnene Spiele"""
+    try:
+        from real_team_usage_tracker import RealTeamUsageTracker
+        
+        usage_tracker = RealTeamUsageTracker(app, db)
+        processed_count = usage_tracker.process_all_started_games()
+        
+        logger.info(f"✅ Processed team usage for {processed_count} started games")
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to process team usage: {e}")
 
