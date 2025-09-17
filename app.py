@@ -84,7 +84,7 @@ def format_vienna_time(utc_time):
 @app.route('/')
 def index():
     """Main page with login protection"""
-    return render_template('index_final.html')
+    return render_template('index.html')
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
