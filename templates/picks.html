@@ -1,0 +1,110 @@
+<!-- 
+NFL PickEm 2025 Picks-Sektion HTML
+Für Integration in die Haupt-App
+-->
+
+<div id="picks-content" class="content-section">
+    <div class="picks-container">
+        <h2>Deine Picks</h2>
+        
+        <!-- Regelbox -->
+        <div class="rules-box">
+            <h3>Spielregeln</h3>
+            <div class="rule-item">
+                <strong>Punkteregel:</strong> Richtiger Tipp = 1 Punkt, falscher Tipp = 0 Punkte
+            </div>
+            <div class="rule-item">
+                <strong>Verliererauswahl-Regel:</strong> Jedes Team kann nur 1x pro Saison als Verlierer getippt werden
+            </div>
+            <div class="rule-item">
+                <strong>Gewinner-Auswahl-Regel:</strong> Jedes Team kann nur 2x pro Saison als Gewinner getippt werden
+            </div>
+        </div>
+        
+        <!-- Week Selector -->
+        <div class="week-selector-container">
+            <label for="week-selector">Woche auswählen:</label>
+            <select id="week-selector">
+                <option value="1">Woche 1</option>
+                <option value="2">Woche 2</option>
+                <option value="3" selected>Woche 3</option>
+                <option value="4">Woche 4</option>
+                <option value="5">Woche 5</option>
+                <option value="6">Woche 6</option>
+                <option value="7">Woche 7</option>
+                <option value="8">Woche 8</option>
+                <option value="9">Woche 9</option>
+                <option value="10">Woche 10</option>
+                <option value="11">Woche 11</option>
+                <option value="12">Woche 12</option>
+                <option value="13">Woche 13</option>
+                <option value="14">Woche 14</option>
+                <option value="15">Woche 15</option>
+                <option value="16">Woche 16</option>
+                <option value="17">Woche 17</option>
+                <option value="18">Woche 18</option>
+            </select>
+        </div>
+        
+        <!-- Week Status -->
+        <div id="week-status" class="week-status week-active">
+            Woche 3 - Picks möglich
+        </div>
+        
+        <!-- User Pick Status -->
+        <div id="user-pick-status">
+            <!-- Wird von JavaScript gefüllt -->
+        </div>
+        
+        <!-- Loading Message -->
+        <div id="loading-message" class="loading-message" style="display: none;">
+            Lädt...
+        </div>
+        
+        <!-- Matches Container -->
+        <div id="matches-container" class="matches-container">
+            <!-- Wird von JavaScript gefüllt -->
+            
+            <!-- Beispiel Match Card (wird durch JavaScript ersetzt) -->
+            <div class="match-card" style="display: none;">
+                <div class="match-time">Sonntag, 22.09. 19:00</div>
+                
+                <div class="match-teams">
+                    <div class="team-container">
+                        <button class="team-button away-team">
+                            <img src="https://a.espncdn.com/i/teamlogos/nfl/500/atl.png" alt="Atlanta Falcons" class="team-logo">
+                            <div class="team-info">
+                                <div class="team-name">Atlanta Falcons</div>
+                                <div class="team-abbr">ATL</div>
+                            </div>
+                        </button>
+                    </div>
+                    
+                    <div class="vs-separator">@</div>
+                    
+                    <div class="team-container">
+                        <button class="team-button home-team">
+                            <img src="https://a.espncdn.com/i/teamlogos/nfl/500/tb.png" alt="Tampa Bay Buccaneers" class="team-logo">
+                            <div class="team-info">
+                                <div class="team-name">Tampa Bay Buccaneers</div>
+                                <div class="team-abbr">TB</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Message Container für Notifications -->
+<div id="message-container" class="message-container" style="display: none;">
+    <!-- Wird von JavaScript gefüllt -->
+</div>
+
+<!-- JavaScript für Picks-Funktionalität -->
+<script src="/static/picks_frontend.js"></script>
+
+<!-- CSS für Picks-Styling -->
+<link rel="stylesheet" href="/static/picks_frontend.css">
+

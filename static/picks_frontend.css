@@ -1,0 +1,462 @@
+/**
+ * CSS für NFL PickEm 2025 Picks-Sektion
+ * Mit Team-Logos und professionellem Design
+ */
+
+/* Picks Container */
+.picks-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+}
+
+.picks-container h2 {
+    font-size: 2rem;
+    margin-bottom: 30px;
+    color: #1a365d;
+    text-align: center;
+}
+
+/* Regelbox */
+.rules-box {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 25px;
+    border-radius: 15px;
+    margin-bottom: 30px;
+    max-width: 800px;
+    margin-left: auto;
+    margin-right: auto;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.rules-box h3 {
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+    color: #fff;
+}
+
+.rule-item {
+    margin-bottom: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.rule-item:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+/* Week Selector */
+.week-selector-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 25px;
+    gap: 15px;
+}
+
+.week-selector-container label {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 1.1rem;
+}
+
+#week-selector {
+    padding: 10px 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s ease;
+}
+
+#week-selector:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Week Status */
+.week-status {
+    padding: 12px 20px;
+    border-radius: 8px;
+    margin-bottom: 25px;
+    font-weight: 600;
+    text-align: center;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.week-status.week-completed {
+    background-color: #fed7d7;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+}
+
+.week-status.week-active {
+    background-color: #c6f6d5;
+    color: #22543d;
+    border: 1px solid #9ae6b4;
+}
+
+.week-status.week-future {
+    background-color: #e2e8f0;
+    color: #4a5568;
+    border: 1px solid #cbd5e0;
+}
+
+/* Matches Container */
+.matches-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    gap: 20px;
+}
+
+.no-matches {
+    text-align: center;
+    color: #718096;
+    font-style: italic;
+    padding: 40px;
+}
+
+/* Match Card */
+.match-card {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.match-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.match-card.user-pick {
+    border-color: #48bb78;
+    background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+}
+
+.match-card.disabled {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Match Status */
+.match-time {
+    color: #4a5568;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+    font-weight: 500;
+}
+
+.match-started {
+    color: #d69e2e;
+    font-weight: 600;
+    margin-bottom: 15px;
+    padding: 5px 10px;
+    background: #faf089;
+    border-radius: 5px;
+    display: inline-block;
+}
+
+.match-result {
+    color: #22543d;
+    font-weight: 600;
+    margin-bottom: 15px;
+    padding: 8px 12px;
+    background: #c6f6d5;
+    border-radius: 5px;
+    display: inline-block;
+}
+
+/* Match Teams */
+.match-teams {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+}
+
+.team-container {
+    flex: 1;
+    max-width: 200px;
+}
+
+.vs-separator {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #4a5568;
+    margin: 0 10px;
+}
+
+/* Team Button */
+.team-button {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    background: white;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    min-height: 120px;
+}
+
+.team-button:hover:not(.disabled) {
+    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+}
+
+.team-button.selected {
+    border-color: #48bb78;
+    background: linear-gradient(135deg, #f0fff4 0%, #c6f6d5 100%);
+    box-shadow: 0 4px 15px rgba(72, 187, 120, 0.3);
+}
+
+.team-button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f7fafc;
+}
+
+/* Team Logo */
+.team-logo {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+    border-radius: 5px;
+}
+
+/* Team Info */
+.team-info {
+    text-align: center;
+}
+
+.team-name {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 0.9rem;
+    line-height: 1.2;
+}
+
+.team-abbr {
+    color: #718096;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* Pick Checkmark */
+.pick-checkmark {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: #48bb78;
+    color: white;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+/* Team Unavailable */
+.team-unavailable {
+    margin-top: 5px;
+    color: #e53e3e;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* User Pick Indicator */
+.user-pick-indicator {
+    margin-top: 15px;
+    padding: 8px 12px;
+    background: #48bb78;
+    color: white;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* User Pick Status */
+.user-pick-summary {
+    background: #f7fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.user-pick-summary h4 {
+    margin-bottom: 10px;
+    color: #2d3748;
+}
+
+.pick-details {
+    color: #4a5568;
+    line-height: 1.5;
+}
+
+.can-change {
+    color: #22543d;
+    font-weight: 600;
+}
+
+.cannot-change {
+    color: #c53030;
+    font-weight: 600;
+}
+
+.no-pick-message {
+    background: #fef5e7;
+    border: 1px solid #f6e05e;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 25px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.no-pick-message p {
+    color: #744210;
+    margin: 0;
+}
+
+/* Loading und Messages */
+.loading-message {
+    text-align: center;
+    padding: 20px;
+    color: #4a5568;
+    font-style: italic;
+    display: none;
+}
+
+.message-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: none;
+}
+
+.message {
+    padding: 15px 20px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 300px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.message-success {
+    background: #c6f6d5;
+    color: #22543d;
+    border: 1px solid #9ae6b4;
+}
+
+.message-error {
+    background: #fed7d7;
+    color: #c53030;
+    border: 1px solid #feb2b2;
+}
+
+.message-info {
+    background: #bee3f8;
+    color: #2a4365;
+    border: 1px solid #90cdf4;
+}
+
+.message-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    margin-left: 10px;
+    opacity: 0.7;
+}
+
+.message-close:hover {
+    opacity: 1;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .picks-container {
+        padding: 15px;
+    }
+    
+    .picks-container h2 {
+        font-size: 1.5rem;
+    }
+    
+    .rules-box {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .match-teams {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .vs-separator {
+        transform: rotate(90deg);
+        margin: 5px 0;
+    }
+    
+    .team-container {
+        max-width: 250px;
+    }
+    
+    .team-button {
+        flex-direction: row;
+        padding: 12px;
+        min-height: auto;
+    }
+    
+    .team-logo {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .team-info {
+        text-align: left;
+        flex: 1;
+    }
+    
+    .message-container {
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        right: 10px;
+    }
+    
+    .message {
+        min-width: auto;
+    }
+}
+

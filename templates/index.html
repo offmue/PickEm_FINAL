@@ -4,113 +4,243 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NFL PickEm 2025</title>
+    
+    <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='picks_frontend.css') }}">
+    
+    <style>
+        /* Basis-Styling für die App */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .app-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 30px rgba(0,0,0,0.1);
+        }
+        
+        /* Header */
+        .app-header {
+            background: linear-gradient(135deg, #1a365d 0%, #2d3748 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .app-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .login-section {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        
+        .login-button, .logout-button {
+            background: #48bb78;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .login-button:hover, .logout-button:hover {
+            background: #38a169;
+        }
+        
+        .user-info {
+            color: #e2e8f0;
+            font-size: 0.9rem;
+        }
+        
+        /* Navigation */
+        .app-nav {
+            background: #f7fafc;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            justify-content: center;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .nav-tab {
+            background: none;
+            border: none;
+            padding: 15px 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            color: #4a5568;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-tab:hover {
+            background: #edf2f7;
+            color: #2d3748;
+        }
+        
+        .nav-tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: white;
+        }
+        
+        /* Content */
+        .app-content {
+            padding: 20px;
+            min-height: 500px;
+        }
+        
+        .content-section {
+            display: none;
+        }
+        
+        .content-section.active {
+            display: block;
+        }
+        
+        /* Login Modal */
+        .login-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+        
+        .login-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+        }
+        
+        .login-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .login-form input {
+            padding: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .login-form button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        .login-form button:hover {
+            background: #5a67d8;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .app-title {
+                font-size: 1.5rem;
+            }
+            
+            .login-section {
+                position: static;
+                margin-top: 15px;
+            }
+            
+            .nav-tabs {
+                flex-wrap: wrap;
+            }
+            
+            .nav-tab {
+                flex: 1;
+                min-width: 120px;
+                padding: 12px 15px;
+                font-size: 0.9rem;
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- Main Header -->
-    <header class="main-header" id="main-header">
-        <div class="header-content-centered">
-            <div class="logo-section-centered">
-                <h1 class="app-title-centered">🏈 NFL PickEm 2025</h1>
-            </div>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <h1 class="app-title">NFL PickEm 2025</h1>
             
-            <!-- Navigation -->
-            <nav class="main-nav-centered">
-                <a href="#" class="nav-tab active" data-section="dashboard">Dashboard</a>
-                <a href="#" class="nav-tab" data-section="picks">Picks</a>
-                <a href="#" class="nav-tab" data-section="leaderboard">Leaderboard</a>
-                <a href="#" class="nav-tab" data-section="all-picks">Alle Picks</a>
-            </nav>
-            
-            <!-- User Section -->
-            <div class="user-section-centered" id="user-section">
-                <button id="login-btn" class="login-btn-centered">Login</button>
-                <button id="logout-btn" class="logout-btn-centered" style="display: none;">Logout</button>
-            </div>
-        </div>
-    </header>
-
-    <!-- Countdown Timer -->
-    <div class="countdown-container">
-        <div class="countdown-timer">
-            <span class="countdown-label">Football-Sunday:</span>
-            <div class="countdown-display">
-                <span class="time-unit">
-                    <span id="days" class="time-value">00</span>
-                    <span class="time-label">Tage</span>
-                </span>
-                <span class="time-separator">:</span>
-                <span class="time-unit">
-                    <span id="hours" class="time-value">00</span>
-                    <span class="time-label">Std</span>
-                </span>
-                <span class="time-separator">:</span>
-                <span class="time-unit">
-                    <span id="minutes" class="time-value">00</span>
-                    <span class="time-label">Min</span>
-                </span>
-                <span class="time-separator">:</span>
-                <span class="time-unit">
-                    <span id="seconds" class="time-value">00</span>
-                    <span class="time-label">Sek</span>
-                </span>
-            </div>
-        </div>
-    </div>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <!-- Dashboard Section -->
-        <section id="dashboard-section" class="content-section active">
-            <div class="dashboard-container">
-                <div class="dashboard-grid">
-                    <!-- User Stats -->
-                    <div class="dashboard-card">
-                        <h3>Deine Punkte</h3>
-                        <div class="stat-display">
-                            <span id="user-points" class="points-value">0</span>
-                            <span class="stat-label">Punkte</span>
-                        </div>
-                    </div>
-                    
-                    <div class="dashboard-card">
-                        <h3>Dein Rang</h3>
-                        <div class="stat-display">
-                            <span id="user-rank" class="rank-value">-</span>
-                            <span class="stat-label">Platz</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Mitspieler Punkte -->
-                    <div class="dashboard-card mitspieler-card">
-                        <h3>Mitspieler Punkte</h3>
-                        <div id="mitspieler-list" class="mitspieler-list">
-                            <p>Lade Mitspieler...</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Team Usage -->
-                    <div class="dashboard-card team-usage-card">
-                        <h3>Team Usage</h3>
-                        <div id="team-usage-list" class="team-usage-list">
-                            <p>Lade Team Usage...</p>
-                        </div>
-                    </div>
+            <div class="login-section">
+                <div id="login-status" style="display: none;">
+                    <span class="user-info">Eingeloggt als: <span id="username"></span></span>
+                    <button class="logout-button" onclick="logout()">Logout</button>
                 </div>
+                <button id="login-button" class="login-button" onclick="showLoginModal()">Login</button>
             </div>
-        </section>
-
-        <!-- Picks Section -->
-        <section id="picks-section" class="content-section">
-            <div class="picks-container">
-                <div class="picks-header">
-                    <h2>Picks</h2>
+        </header>
+        
+        <!-- Navigation -->
+        <nav class="app-nav">
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-section="dashboard">Dashboard</button>
+                <button class="nav-tab" data-section="picks">Picks</button>
+                <button class="nav-tab" data-section="leaderboard">Leaderboard</button>
+                <button class="nav-tab" data-section="all-picks">Alle Picks</button>
+            </div>
+        </nav>
+        
+        <!-- Content -->
+        <main class="app-content">
+            <!-- Dashboard -->
+            <div id="dashboard-content" class="content-section active">
+                <h2>Dashboard</h2>
+                <p>Dashboard-Inhalt wird hier angezeigt...</p>
+            </div>
+            
+            <!-- Picks -->
+            <div id="picks-content" class="content-section">
+                <div class="picks-container">
+                    <h2>Deine Picks</h2>
                     
                     <!-- Regelbox -->
                     <div class="rules-box">
+                        <h3>Spielregeln</h3>
                         <div class="rule-item">
-                            <strong>Punkteregel:</strong> Richtig getippt = +1 Punkt, falsch getippt = 0 Punkte
+                            <strong>Punkteregel:</strong> Richtiger Tipp = 1 Punkt, falscher Tipp = 0 Punkte
                         </div>
                         <div class="rule-item">
                             <strong>Verliererauswahl-Regel:</strong> Jedes Team kann nur 1x pro Saison als Verlierer getippt werden
@@ -120,12 +250,13 @@
                         </div>
                     </div>
                     
+                    <!-- Week Selector -->
                     <div class="week-selector-container">
-                        <label for="week-select">Woche:</label>
-                        <select id="week-select" class="week-select">
+                        <label for="week-selector">Woche auswählen:</label>
+                        <select id="week-selector">
                             <option value="1">Woche 1</option>
                             <option value="2">Woche 2</option>
-                            <option value="3">Woche 3</option>
+                            <option value="3" selected>Woche 3</option>
                             <option value="4">Woche 4</option>
                             <option value="5">Woche 5</option>
                             <option value="6">Woche 6</option>
@@ -142,71 +273,189 @@
                             <option value="17">Woche 17</option>
                             <option value="18">Woche 18</option>
                         </select>
-                        <span id="current-week-indicator" class="current-week-indicator"></span>
+                    </div>
+                    
+                    <!-- Week Status -->
+                    <div id="week-status" class="week-status week-active">
+                        Woche 3 - Picks möglich
+                    </div>
+                    
+                    <!-- User Pick Status -->
+                    <div id="user-pick-status">
+                        <!-- Wird von JavaScript gefüllt -->
+                    </div>
+                    
+                    <!-- Loading Message -->
+                    <div id="loading-message" class="loading-message" style="display: none;">
+                        Lädt...
+                    </div>
+                    
+                    <!-- Matches Container -->
+                    <div id="matches-container" class="matches-container">
+                        <!-- Wird von JavaScript gefüllt -->
                     </div>
                 </div>
-                
-                <div class="picks-content">
-                    <div class="matches-container">
-                        <p>Lade Spiele...</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Leaderboard Section -->
-        <section id="leaderboard-section" class="content-section">
-            <div class="leaderboard-container">
-                <h2>Rangliste</h2>
-                <p>Lade Rangliste...</p>
-            </div>
-        </section>
-
-        <!-- All Picks Section -->
-        <section id="all-picks-section" class="content-section">
-            <div class="all-picks-container">
-                <h2>Alle Picks</h2>
-                <div id="alle-picks-content">
-                    <p>Lade alle Picks...</p>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Login Modal -->
-    <div id="login-modal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Login</h3>
-                <button id="modal-close" class="modal-close">&times;</button>
             </div>
             
-            <form id="login-form" class="login-form">
-                <div class="form-group">
-                    <label for="username">Benutzername:</label>
-                    <input type="text" id="username" name="username" required>
-                </div>
-                
-                <div class="form-group">
-                    <label for="password">Passwort:</label>
-                    <input type="password" id="password" name="password" required>
-                </div>
-                
-                <div class="form-actions">
-                    <button type="submit" class="login-submit-btn">Login</button>
-                </div>
+            <!-- Leaderboard -->
+            <div id="leaderboard-content" class="content-section">
+                <h2>Leaderboard</h2>
+                <p>Leaderboard-Inhalt wird hier angezeigt...</p>
+            </div>
+            
+            <!-- Alle Picks -->
+            <div id="all-picks-content" class="content-section">
+                <h2>Alle Picks</h2>
+                <p>Alle Picks-Inhalt wird hier angezeigt...</p>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Login Modal -->
+    <div id="login-modal" class="login-modal">
+        <div class="login-modal-content">
+            <h3>Login</h3>
+            <form class="login-form" onsubmit="login(event)">
+                <input type="text" id="login-username" placeholder="Benutzername" required>
+                <input type="password" id="login-password" placeholder="Passwort" required>
+                <button type="submit">Einloggen</button>
+                <button type="button" onclick="hideLoginModal()">Abbrechen</button>
             </form>
         </div>
     </div>
-
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="loading-overlay" style="display: none;">
-        <div class="loading-spinner"></div>
-        <p>Lade...</p>
-    </div>
-
+    
     <!-- JavaScript -->
-    <script src="{{ url_for('static', filename='app.js') }}"></script>
+    <script src="{{ url_for('static', filename='picks_frontend.js') }}"></script>
+    <script>
+        // Basis-App Funktionalität
+        
+        // Navigation
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                const section = tab.dataset.section;
+                showSection(section);
+            });
+        });
+        
+        function showSection(sectionName) {
+            // Alle Sektionen verstecken
+            document.querySelectorAll('.content-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // Alle Tabs deaktivieren
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Gewählte Sektion anzeigen
+            const targetSection = document.getElementById(sectionName + '-content');
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+            
+            // Gewählten Tab aktivieren
+            const targetTab = document.querySelector(`[data-section="${sectionName}"]`);
+            if (targetTab) {
+                targetTab.classList.add('active');
+            }
+            
+            console.log(`Switched to section: ${sectionName}`);
+        }
+        
+        // Login/Logout
+        function showLoginModal() {
+            document.getElementById('login-modal').style.display = 'block';
+        }
+        
+        function hideLoginModal() {
+            document.getElementById('login-modal').style.display = 'none';
+        }
+        
+        async function login(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('login-username').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    updateLoginStatus(result.user);
+                    hideLoginModal();
+                    alert('Login erfolgreich!');
+                } else {
+                    alert(result.message || 'Login fehlgeschlagen');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Fehler beim Login');
+            }
+        }
+        
+        async function logout() {
+            try {
+                const response = await fetch('/api/auth/logout', {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    updateLoginStatus(null);
+                    alert('Logout erfolgreich!');
+                } else {
+                    alert('Fehler beim Logout');
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+                alert('Fehler beim Logout');
+            }
+        }
+        
+        function updateLoginStatus(user) {
+            const loginButton = document.getElementById('login-button');
+            const loginStatus = document.getElementById('login-status');
+            const usernameSpan = document.getElementById('username');
+            
+            if (user) {
+                loginButton.style.display = 'none';
+                loginStatus.style.display = 'block';
+                usernameSpan.textContent = user.username;
+            } else {
+                loginButton.style.display = 'block';
+                loginStatus.style.display = 'none';
+            }
+        }
+        
+        // Session Check beim Laden
+        async function checkSession() {
+            try {
+                const response = await fetch('/api/auth/session');
+                const result = await response.json();
+                
+                if (result.logged_in) {
+                    updateLoginStatus(result.user);
+                }
+            } catch (error) {
+                console.error('Session check error:', error);
+            }
+        }
+        
+        // Initialisierung
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSession();
+        });
+    </script>
 </body>
 </html>
 
