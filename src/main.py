@@ -443,6 +443,9 @@ def init_db():
             db.session.commit()
             logger.info("✅ Users created")
 
+# Alias for Render deployment
+initialize_database = init_db
+
 if __name__ == '__main__':
     init_db()
     port = int(os.environ.get('PORT', 5000))
